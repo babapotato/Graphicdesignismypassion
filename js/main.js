@@ -13,7 +13,7 @@ const CONFIG = {
     canvasLineColor: '#0000FF',
     canvasLineWidth: 1,
     canvasLineWidthMin: 0.6,
-    canvasLineWidthMax: 4.5,
+    canvasLineWidthMax: 6,
     canvasSpeedMin: 0.02,
     canvasSpeedMax: 1.1,
     clickThreshold: 5
@@ -207,7 +207,7 @@ class CreativeTrace {
             0,
             1
         );
-        return CONFIG.canvasLineWidthMin + t * (CONFIG.canvasLineWidthMax - CONFIG.canvasLineWidthMin);
+        return CONFIG.canvasLineWidthMax - t * (CONFIG.canvasLineWidthMax - CONFIG.canvasLineWidthMin);
     }
 
     drawTo(x, y, timeStamp) {
@@ -307,6 +307,10 @@ class CommentSystem {
         
         // Skip nav clicks
         if (target.closest('.nav')) return;
+
+        // Skip image clicks (handled by lightbox)
+        if (target.closest('.project__image') || target.closest('.project__image-wrapper')) return;
+        if (target.closest('.lightbox')) return;
         
         // Skip clicks inside modal
         if (target.closest('.comment-modal')) return;
@@ -464,6 +468,67 @@ class CommentSystem {
 
 /**
  * ============================================
+ * IMAGE LIGHTBOX (Projects)
+ * ============================================
+ */
+class ImageLightbox {
+    constructor() {
+        this.lightbox = null;
+        this.handleKeydown = this.handleKeydown.bind(this);
+        this.init();
+    }
+
+    init() {
+        document.addEventListener('click', (e) => {
+            const imageEl = e.target.closest('.project__image');
+            if (!imageEl) return;
+
+            const src = imageEl.dataset.full || imageEl.dataset.src;
+            if (!src) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+            this.open(src, imageEl.getAttribute('aria-label') || 'Project image');
+        });
+    }
+
+    open(src, alt) {
+        if (this.lightbox) this.close();
+
+        const overlay = document.createElement('div');
+        overlay.className = 'lightbox';
+        overlay.innerHTML = `
+            <button class="lightbox__close" aria-label="Close image">&times;</button>
+            <img class="lightbox__img" src="${src}" alt="${alt}">
+        `;
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target.classList.contains('lightbox__close') || e.target === overlay) {
+                this.close();
+            }
+        });
+
+        document.addEventListener('keydown', this.handleKeydown);
+        document.body.appendChild(overlay);
+        document.body.style.overflow = 'hidden';
+        this.lightbox = overlay;
+    }
+
+    close() {
+        if (!this.lightbox) return;
+        this.lightbox.remove();
+        this.lightbox = null;
+        document.body.style.overflow = '';
+        document.removeEventListener('keydown', this.handleKeydown);
+    }
+
+    handleKeydown(e) {
+        if (e.key === 'Escape') this.close();
+    }
+}
+
+/**
+ * ============================================
  * SMOOTH SCROLL NAVIGATION
  * ============================================
  */
@@ -536,6 +601,7 @@ function init() {
     new CreativeTrace();
     new CommentSystem();
     new SmoothNavigation();
+    new ImageLightbox();
     
     // Load site data for email config
     fetch('./content/site_data.json')
@@ -544,6 +610,7 @@ function init() {
             if (data?.site?.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
                 CONFIG.email = data.site.email;
             }
+            applyProjectImages(data);
         })
         .catch(() => {});
     
@@ -580,3 +647,35 @@ window.addEventListener('load', () => {
         }
     }, 100);
 });
+
+/**
+ * ============================================
+ * PROJECT IMAGES (Instagram or fallback)
+ * ============================================
+ */
+function applyProjectImages(data) {
+    const imageEls = document.querySelectorAll('.project__image');
+    if (!imageEls.length) return;
+
+    const instagramImages = Array.isArray(data?.instagram?.images) ? data.instagram.images : [];
+    const fallbackImages = Array.isArray(data?.sections?.projects?.items)
+        ? data.sections.projects.items.map(item => item.image).filter(Boolean)
+        : [];
+    const sources = instagramImages.length ? instagramImages : fallbackImages;
+
+    imageEls.forEach((el, index) => {
+        const src = sources[index % sources.length];
+        if (!src) return;
+
+        el.classList.remove('project__image--placeholder');
+        el.style.backgroundImage = `url("${src}")`;
+        el.dataset.src = src;
+        el.dataset.full = src;
+
+        const title = data?.sections?.projects?.items?.[index]?.title;
+        if (title) {
+            el.setAttribute('role', 'img');
+            el.setAttribute('aria-label', title);
+        }
+    });
+}

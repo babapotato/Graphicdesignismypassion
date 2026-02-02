@@ -326,6 +326,9 @@ input, textarea {
     width: 100%;
     object-fit: cover;
     transition: transform var(--transition-slow);
+    background-size: cover;
+    background-position: center;
+    cursor: zoom-in;
 }
 
 .project:hover .project__image {
@@ -338,6 +341,48 @@ input, textarea {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+/* ============================================
+   IMAGE LIGHTBOX
+   ============================================ */
+.lightbox {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.85);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1100;
+    padding: var(--spacing-lg);
+}
+
+.lightbox__img {
+    max-width: 92vw;
+    max-height: 88vh;
+    border-radius: 8px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.35);
+}
+
+.lightbox__close {
+    position: absolute;
+    top: var(--spacing-lg);
+    right: var(--spacing-lg);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--color-black);
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: var(--transition-fast);
+}
+
+.lightbox__close:hover {
+    background: var(--color-white);
+    transform: scale(1.05);
 }
 
 .project__info {
