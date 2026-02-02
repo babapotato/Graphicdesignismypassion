@@ -7,25 +7,25 @@
 
 // Configuration
 const CONFIG = {
-    email: '[INSERT_EMAIL_HERE]', // Replace with actual email
-    useFormspree: false, // Set to true and add formspree endpoint if using Formspree
+    email: '[INSERT_EMAIL_HERE]',
+    useFormspree: false,
     formspreeEndpoint: 'https://formspree.io/f/YOUR_FORM_ID',
     canvasLineColor: '#0000FF',
     canvasLineWidth: 1,
-    clickThreshold: 5 // pixels - movement less than this is considered a click, not a drag
+    clickThreshold: 5
 };
 
-// Global state to coordinate between drawing and clicking
+// Global state
 const AppState = {
     isDragging: false,
-    mouseDownPos: { x: 0, y: 0 },
-    hasMoved: false
+    hasMoved: false,
+    startX: 0,
+    startY: 0
 };
 
 /**
  * ============================================
  * CREATIVE TRACE - Canvas Drawing Feature
- * Draws persistent blue lines that scroll with content
  * ============================================
  */
 class CreativeTrace {
@@ -36,49 +36,37 @@ class CreativeTrace {
             return;
         }
         this.ctx = this.canvas.getContext('2d');
-        this.isDrawing = false;
-        this.lastX = 0;
-        this.lastY = 0;
+        this.drawing = false;
+        this.prevX = 0;
+        this.prevY = 0;
+        this.hasStartedDrawing = false; // Track if we've started actual drawing
         
         this.init();
     }
     
-    /**
-     * Initialize canvas and event listeners
-     */
     init() {
-        // Wait for page to fully render before sizing canvas
         this.resizeCanvas();
         this.setupEventListeners();
-        this.setCanvasStyles();
         
-        // Re-check canvas size after a short delay (images/fonts loading)
+        // Multiple resize attempts for dynamic content
+        setTimeout(() => this.resizeCanvas(), 100);
         setTimeout(() => this.resizeCanvas(), 500);
         setTimeout(() => this.resizeCanvas(), 1500);
         
-        console.log('Creative Trace initialized');
+        console.log('Creative Trace: Ready to draw');
     }
     
-    /**
-     * Set canvas drawing styles
-     */
-    setCanvasStyles() {
+    setStyles() {
         this.ctx.strokeStyle = CONFIG.canvasLineColor;
         this.ctx.lineWidth = CONFIG.canvasLineWidth;
         this.ctx.lineCap = 'round';
         this.ctx.lineJoin = 'round';
     }
     
-    /**
-     * Resize canvas to match document height (not viewport)
-     * This ensures drawings persist and scroll with content
-     */
     resizeCanvas() {
-        // Calculate the full document height
         const docHeight = Math.max(
             document.body.scrollHeight,
             document.body.offsetHeight,
-            document.documentElement.clientHeight,
             document.documentElement.scrollHeight,
             document.documentElement.offsetHeight
         );
@@ -86,219 +74,185 @@ class CreativeTrace {
         const docWidth = Math.max(
             document.body.scrollWidth,
             document.body.offsetWidth,
-            document.documentElement.clientWidth,
             document.documentElement.scrollWidth,
-            document.documentElement.offsetWidth
+            document.documentElement.offsetWidth,
+            window.innerWidth
         );
         
-        // Only resize if dimensions actually changed
+        // Skip if no change
         if (this.canvas.width === docWidth && this.canvas.height === docHeight) {
             return;
         }
         
-        // Store existing drawing before resize
+        // Save current drawing
         let imageData = null;
-        if (this.canvas.width > 0 && this.canvas.height > 0) {
-            try {
+        try {
+            if (this.canvas.width > 0 && this.canvas.height > 0) {
                 imageData = this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
-            } catch (e) {
-                // Canvas was empty or cross-origin issue
             }
-        }
+        } catch (e) { /* ignore */ }
         
-        // Set canvas dimensions
+        // Resize
         this.canvas.width = docWidth;
         this.canvas.height = docHeight;
         
-        // Restore drawing after resize
+        // Restore drawing
         if (imageData) {
             this.ctx.putImageData(imageData, 0, 0);
         }
         
-        // Reset styles after resize (canvas resize clears context state)
-        this.setCanvasStyles();
-        
-        console.log(`Canvas resized to ${docWidth}x${docHeight}`);
+        this.setStyles();
+        console.log(`Canvas: ${docWidth}x${docHeight}`);
     }
     
-    /**
-     * Setup mouse and touch event listeners
-     */
     setupEventListeners() {
-        // Mouse events - attached to document for full page tracking
-        document.addEventListener('mousedown', (e) => this.startDrawing(e), true);
-        document.addEventListener('mousemove', (e) => this.draw(e), true);
-        document.addEventListener('mouseup', (e) => this.stopDrawing(e), true);
-        document.addEventListener('mouseleave', () => this.stopDrawing(), true);
+        // Mouse events
+        document.addEventListener('mousedown', this.onMouseDown.bind(this));
+        document.addEventListener('mousemove', this.onMouseMove.bind(this));
+        document.addEventListener('mouseup', this.onMouseUp.bind(this));
+        document.addEventListener('mouseleave', this.onMouseUp.bind(this));
         
-        // Touch events for mobile - use capturing phase
-        document.addEventListener('touchstart', (e) => this.handleTouchStart(e), { capture: true, passive: true });
-        document.addEventListener('touchmove', (e) => this.handleTouchMove(e), { capture: true, passive: true });
-        document.addEventListener('touchend', () => this.stopDrawing(), { capture: true });
-        document.addEventListener('touchcancel', () => this.stopDrawing(), { capture: true });
+        // Touch events
+        document.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: true });
+        document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+        document.addEventListener('touchend', this.onMouseUp.bind(this));
+        document.addEventListener('touchcancel', this.onMouseUp.bind(this));
         
-        // Resize handler with debounce
-        let resizeTimeout;
+        // Resize
         window.addEventListener('resize', () => {
-            clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(() => this.resizeCanvas(), 250);
-        });
-        
-        // Also resize on scroll (in case content loads dynamically)
-        let scrollTimeout;
-        window.addEventListener('scroll', () => {
-            clearTimeout(scrollTimeout);
-            scrollTimeout = setTimeout(() => this.resizeCanvas(), 500);
-        }, { passive: true });
-        
-        // Resize when DOM changes
-        const observer = new MutationObserver(() => {
             setTimeout(() => this.resizeCanvas(), 100);
         });
-        observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+        
+        // Scroll
+        window.addEventListener('scroll', () => {
+            setTimeout(() => this.resizeCanvas(), 200);
+        }, { passive: true });
     }
     
-    /**
-     * Get coordinates relative to the document (not viewport)
-     */
-    getCoordinates(e) {
+    isInteractive(el) {
+        if (!el) return false;
+        const tag = el.tagName;
+        if (['A', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return true;
+        if (el.closest('.nav, .comment-modal, .comment-marker')) return true;
+        return false;
+    }
+    
+    getPos(e) {
         if (e.touches && e.touches.length > 0) {
-            return {
-                x: e.touches[0].pageX,
-                y: e.touches[0].pageY
-            };
+            return { x: e.touches[0].pageX, y: e.touches[0].pageY };
         }
-        return {
-            x: e.pageX,
-            y: e.pageY
-        };
+        return { x: e.pageX, y: e.pageY };
     }
     
-    /**
-     * Start drawing on mouse down
-     */
-    startDrawing(e) {
-        // Skip if clicking on truly interactive elements (nav, modals, buttons)
-        if (this.isInteractiveElement(e.target)) {
-            return;
-        }
+    onMouseDown(e) {
+        if (this.isInteractive(e.target)) return;
         
-        const coords = this.getCoordinates(e);
+        const pos = this.getPos(e);
         
-        // Store initial position for click vs drag detection
-        AppState.mouseDownPos = { x: coords.x, y: coords.y };
-        AppState.hasMoved = false;
+        this.drawing = true;
+        this.hasStartedDrawing = false;
+        this.prevX = pos.x;
+        this.prevY = pos.y;
+        
+        // Store start position for click detection
         AppState.isDragging = true;
-        
-        this.isDrawing = true;
-        this.lastX = coords.x;
-        this.lastY = coords.y;
+        AppState.hasMoved = false;
+        AppState.startX = pos.x;
+        AppState.startY = pos.y;
     }
     
-    /**
-     * Draw line as mouse/touch moves
-     */
-    draw(e) {
-        if (!this.isDrawing) return;
+    onMouseMove(e) {
+        if (!this.drawing) return;
         
-        const coords = this.getCoordinates(e);
+        const pos = this.getPos(e);
         
-        // Calculate distance moved
-        const dx = coords.x - AppState.mouseDownPos.x;
-        const dy = coords.y - AppState.mouseDownPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        // Calculate total distance from start
+        const dx = pos.x - AppState.startX;
+        const dy = pos.y - AppState.startY;
+        const totalDist = Math.sqrt(dx * dx + dy * dy);
         
-        // Only start drawing if moved past threshold
-        if (distance > CONFIG.clickThreshold) {
+        // Only draw if moved past threshold
+        if (totalDist > CONFIG.clickThreshold) {
             AppState.hasMoved = true;
             
+            // If this is the first draw stroke, start from the original click point
+            if (!this.hasStartedDrawing) {
+                this.hasStartedDrawing = true;
+                this.prevX = AppState.startX;
+                this.prevY = AppState.startY;
+            }
+            
+            // Draw line segment
             this.ctx.beginPath();
-            this.ctx.moveTo(this.lastX, this.lastY);
-            this.ctx.lineTo(coords.x, coords.y);
+            this.ctx.moveTo(this.prevX, this.prevY);
+            this.ctx.lineTo(pos.x, pos.y);
             this.ctx.stroke();
+            
+            // Update previous position for next segment
+            this.prevX = pos.x;
+            this.prevY = pos.y;
         }
-        
-        this.lastX = coords.x;
-        this.lastY = coords.y;
     }
     
-    /**
-     * Stop drawing
-     */
-    stopDrawing() {
-        this.isDrawing = false;
+    onMouseUp() {
+        this.drawing = false;
+        this.hasStartedDrawing = false;
         AppState.isDragging = false;
     }
     
-    /**
-     * Handle touch start
-     */
-    handleTouchStart(e) {
-        if (this.isInteractiveElement(e.target)) {
-            return;
-        }
+    onTouchStart(e) {
+        if (this.isInteractive(e.target)) return;
+        if (e.touches.length !== 1) return; // Only single touch
         
-        const coords = this.getCoordinates(e);
+        const pos = this.getPos(e);
         
-        AppState.mouseDownPos = { x: coords.x, y: coords.y };
-        AppState.hasMoved = false;
+        this.drawing = true;
+        this.hasStartedDrawing = false;
+        this.prevX = pos.x;
+        this.prevY = pos.y;
+        
         AppState.isDragging = true;
-        
-        this.isDrawing = true;
-        this.lastX = coords.x;
-        this.lastY = coords.y;
+        AppState.hasMoved = false;
+        AppState.startX = pos.x;
+        AppState.startY = pos.y;
     }
     
-    /**
-     * Handle touch move
-     */
-    handleTouchMove(e) {
-        if (!this.isDrawing) return;
+    onTouchMove(e) {
+        if (!this.drawing) return;
+        if (e.touches.length !== 1) return;
         
-        const coords = this.getCoordinates(e);
+        const pos = this.getPos(e);
         
-        // Calculate distance moved
-        const dx = coords.x - AppState.mouseDownPos.x;
-        const dy = coords.y - AppState.mouseDownPos.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        const dx = pos.x - AppState.startX;
+        const dy = pos.y - AppState.startY;
+        const totalDist = Math.sqrt(dx * dx + dy * dy);
         
-        if (distance > CONFIG.clickThreshold) {
+        if (totalDist > CONFIG.clickThreshold) {
+            // Prevent scrolling while drawing
+            e.preventDefault();
+            
             AppState.hasMoved = true;
             
+            if (!this.hasStartedDrawing) {
+                this.hasStartedDrawing = true;
+                this.prevX = AppState.startX;
+                this.prevY = AppState.startY;
+            }
+            
             this.ctx.beginPath();
-            this.ctx.moveTo(this.lastX, this.lastY);
-            this.ctx.lineTo(coords.x, coords.y);
+            this.ctx.moveTo(this.prevX, this.prevY);
+            this.ctx.lineTo(pos.x, pos.y);
             this.ctx.stroke();
+            
+            this.prevX = pos.x;
+            this.prevY = pos.y;
         }
-        
-        this.lastX = coords.x;
-        this.lastY = coords.y;
-    }
-    
-    /**
-     * Check if element is truly interactive (not just commentable)
-     */
-    isInteractiveElement(element) {
-        const interactiveTags = ['A', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'];
-        
-        // Check tag name
-        if (interactiveTags.includes(element.tagName)) {
-            return true;
-        }
-        
-        // Check if inside nav or modal
-        if (element.closest('.nav') || element.closest('.comment-modal') || element.closest('.comment-marker')) {
-            return true;
-        }
-        
-        return false;
     }
 }
 
 /**
  * ============================================
  * COLLABORATIVE COMMENTING SYSTEM
- * Click anywhere to leave comments
  * ============================================
  */
 class CommentSystem {
@@ -314,43 +268,29 @@ class CommentSystem {
         }
         
         this.init();
-        console.log('Comment System initialized');
+        console.log('Comment System: Ready');
     }
     
-    /**
-     * Initialize commenting system
-     */
     init() {
-        this.setupEventListeners();
-    }
-    
-    /**
-     * Setup click event listeners on commentable elements
-     */
-    setupEventListeners() {
-        // Use event delegation - listen for click (not mousedown)
-        document.addEventListener('click', (e) => this.handleClick(e));
-        
-        // Close modal on Escape key
+        document.addEventListener('click', this.handleClick.bind(this));
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape' && this.activeModal) {
-                this.closeActiveModal();
+                this.closeModal();
             }
         });
     }
     
-    /**
-     * Handle click events
-     */
     handleClick(e) {
         const target = e.target;
         
-        // If user was dragging (drawing), don't open comment modal
+        // Skip if user was drawing
         if (AppState.hasMoved) {
+            // Reset for next interaction
+            setTimeout(() => { AppState.hasMoved = false; }, 10);
             return;
         }
         
-        // Handle marker clicks
+        // Handle marker click
         if (target.classList.contains('comment-marker')) {
             e.preventDefault();
             e.stopPropagation();
@@ -358,15 +298,15 @@ class CommentSystem {
             return;
         }
         
-        // Handle modal close button
+        // Handle modal close
         if (target.classList.contains('comment-modal__close')) {
             e.preventDefault();
             e.stopPropagation();
-            this.closeActiveModal();
+            this.closeModal();
             return;
         }
         
-        // Handle comment submit
+        // Handle submit
         if (target.classList.contains('comment-modal__submit')) {
             e.preventDefault();
             e.stopPropagation();
@@ -374,247 +314,157 @@ class CommentSystem {
             return;
         }
         
-        // Don't open modal for navigation clicks
-        if (target.closest('.nav')) {
+        // Skip nav clicks
+        if (target.closest('.nav')) return;
+        
+        // Skip clicks inside modal
+        if (target.closest('.comment-modal')) return;
+        
+        // Close modal if clicking outside
+        if (this.activeModal) {
+            this.closeModal();
             return;
         }
         
-        // Don't open modal if clicking inside existing modal
-        if (target.closest('.comment-modal')) {
-            return;
-        }
-        
-        // If clicking outside modal, close it
-        if (this.activeModal && !this.activeModal.contains(target)) {
-            this.closeActiveModal();
-            // Don't open a new modal immediately after closing
-            return;
-        }
-        
-        // Check if clicking on a commentable element
-        const commentableElement = target.closest('[data-commentable]');
-        if (commentableElement) {
-            this.openModal(e.pageX, e.pageY, commentableElement);
+        // Open modal on commentable element
+        const commentable = target.closest('[data-commentable]');
+        if (commentable) {
+            this.openModal(e.pageX, e.pageY);
         }
     }
     
-    /**
-     * Open comment modal at specified coordinates
-     */
-    openModal(x, y, targetElement) {
-        // Close any existing modal first
-        this.closeActiveModal();
+    openModal(x, y) {
+        this.closeModal();
         
-        // Clone modal template
-        const templateContent = this.modalTemplate.content.cloneNode(true);
-        const modal = templateContent.querySelector('.comment-modal');
+        const clone = this.modalTemplate.content.cloneNode(true);
+        const modal = clone.querySelector('.comment-modal');
+        if (!modal) return;
         
-        if (!modal) {
-            console.error('Modal template structure invalid');
-            return;
-        }
+        // Position
+        const w = 280, h = 220, pad = 15;
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const sx = window.scrollX;
+        const sy = window.scrollY;
         
-        // Calculate position - keep modal within viewport
-        const modalWidth = 280;
-        const modalHeight = 220;
-        const padding = 15;
-        const viewportWidth = window.innerWidth;
-        const viewportHeight = window.innerHeight;
-        const scrollX = window.scrollX || window.pageXOffset;
-        const scrollY = window.scrollY || window.pageYOffset;
+        let px = x + pad;
+        let py = y + pad;
         
-        // Start with click position + padding
-        let posX = x + padding;
-        let posY = y + padding;
+        if (px + w > sx + vw - pad) px = x - w - pad;
+        if (px < sx + pad) px = sx + pad;
+        if (py + h > sy + vh - pad) py = y - h - pad;
+        if (py < sy + pad) py = sy + pad;
         
-        // Adjust horizontal position to stay in viewport
-        if (posX + modalWidth > scrollX + viewportWidth - padding) {
-            posX = x - modalWidth - padding;
-        }
-        if (posX < scrollX + padding) {
-            posX = scrollX + padding;
-        }
-        
-        // Adjust vertical position to stay in viewport
-        if (posY + modalHeight > scrollY + viewportHeight - padding) {
-            posY = y - modalHeight - padding;
-        }
-        if (posY < scrollY + padding) {
-            posY = scrollY + padding;
-        }
-        
-        modal.style.left = `${posX}px`;
-        modal.style.top = `${posY}px`;
-        
-        // Store click coordinates for marker placement
+        modal.style.left = px + 'px';
+        modal.style.top = py + 'px';
         modal.dataset.clickX = x;
         modal.dataset.clickY = y;
         
-        // Add to DOM
         document.body.appendChild(modal);
         this.activeModal = modal;
         
-        // Focus textarea after a brief delay (allows animation)
         setTimeout(() => {
-            const textarea = modal.querySelector('.comment-modal__textarea');
-            if (textarea) textarea.focus();
+            const ta = modal.querySelector('.comment-modal__textarea');
+            if (ta) ta.focus();
         }, 50);
     }
     
-    /**
-     * Close active modal
-     */
-    closeActiveModal() {
+    closeModal() {
         if (this.activeModal) {
             this.activeModal.remove();
             this.activeModal = null;
         }
     }
     
-    /**
-     * Handle form submission
-     */
     handleSubmit(form) {
         if (!form) return;
         
         const modal = form.closest('.comment-modal');
-        const textarea = form.querySelector('.comment-modal__textarea');
-        const emailInput = form.querySelector('.comment-modal__email');
+        const ta = form.querySelector('.comment-modal__textarea');
+        const em = form.querySelector('.comment-modal__email');
         
-        if (!textarea || !emailInput) return;
+        if (!ta || !em) return;
         
-        const comment = textarea.value.trim();
-        const userEmail = emailInput.value.trim();
+        const comment = ta.value.trim();
+        const email = em.value.trim();
         
-        // Validate
-        if (!comment || !userEmail) {
+        if (!comment || !email) {
             alert('Please fill in both fields.');
             return;
         }
         
-        // Basic email validation
-        if (!userEmail.includes('@') || !userEmail.includes('.')) {
-            alert('Please enter a valid email address.');
+        if (!email.includes('@') || !email.includes('.')) {
+            alert('Please enter a valid email.');
             return;
         }
         
-        // Get coordinates for marker placement
-        const clickX = parseInt(modal.dataset.clickX, 10);
-        const clickY = parseInt(modal.dataset.clickY, 10);
+        const cx = parseInt(modal.dataset.clickX, 10);
+        const cy = parseInt(modal.dataset.clickY, 10);
         
-        // Send comment via mailto or Formspree
+        // Send
         if (CONFIG.useFormspree) {
-            this.sendViaFormspree(comment, userEmail, clickX, clickY);
+            this.sendFormspree(comment, email, cx, cy);
         } else {
-            this.sendViaMailto(comment, userEmail);
+            this.sendMailto(comment, email);
         }
         
-        // Create marker and close modal
-        this.createMarker(clickX, clickY, comment, userEmail);
-        this.closeActiveModal();
+        this.createMarker(cx, cy, comment, email);
+        this.closeModal();
     }
     
-    /**
-     * Send comment via mailto link
-     */
-    sendViaMailto(comment, userEmail) {
-        const subject = encodeURIComponent('Portfolio Comment - Studio Duo');
+    sendMailto(comment, email) {
+        const subj = encodeURIComponent('Portfolio Comment - Studio Duo');
         const body = encodeURIComponent(
-            `Comment: ${comment}\n\n` +
-            `From: ${userEmail}\n\n` +
-            `Page: ${window.location.href}`
+            `Comment: ${comment}\n\nFrom: ${email}\n\nPage: ${window.location.href}`
         );
-        
-        // Open in new window to avoid navigating away
-        window.open(`mailto:${CONFIG.email}?subject=${subject}&body=${body}`, '_blank');
+        window.open(`mailto:${CONFIG.email}?subject=${subj}&body=${body}`, '_blank');
     }
     
-    /**
-     * Send comment via Formspree
-     */
-    async sendViaFormspree(comment, userEmail, x, y) {
+    async sendFormspree(comment, email, x, y) {
         try {
-            const response = await fetch(CONFIG.formspreeEndpoint, {
+            await fetch(CONFIG.formspreeEndpoint, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                body: JSON.stringify({
-                    comment: comment,
-                    email: userEmail,
-                    page: window.location.href,
-                    coordinates: `${x}, ${y}`
-                })
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body: JSON.stringify({ comment, email, page: window.location.href, coords: `${x},${y}` })
             });
-            
-            if (response.ok) {
-                console.log('Comment sent successfully');
-            } else {
-                console.error('Failed to send comment:', response.status);
-            }
-        } catch (error) {
-            console.error('Error sending comment:', error);
+        } catch (err) {
+            console.error('Formspree error:', err);
         }
     }
     
-    /**
-     * Create marker at comment location
-     */
     createMarker(x, y, comment, email) {
-        const templateContent = this.markerTemplate.content.cloneNode(true);
-        const marker = templateContent.querySelector('.comment-marker');
-        
+        const clone = this.markerTemplate.content.cloneNode(true);
+        const marker = clone.querySelector('.comment-marker');
         if (!marker) return;
         
-        // Position marker (center the 24px marker on click point)
-        marker.style.left = `${x - 12}px`;
-        marker.style.top = `${y - 12}px`;
-        
-        // Store comment data
+        marker.style.left = (x - 12) + 'px';
+        marker.style.top = (y - 12) + 'px';
         marker.dataset.comment = comment;
         marker.dataset.email = email;
         
-        // Add to DOM
         document.body.appendChild(marker);
         this.markers.push(marker);
     }
     
-    /**
-     * Toggle modal from marker click
-     */
     toggleMarkerModal(marker) {
-        // If there's an active modal, close it
         if (this.activeModal) {
-            this.closeActiveModal();
+            this.closeModal();
             return;
         }
         
-        // Create a modal showing the saved comment
-        const templateContent = this.modalTemplate.content.cloneNode(true);
-        const modal = templateContent.querySelector('.comment-modal');
-        
+        const clone = this.modalTemplate.content.cloneNode(true);
+        const modal = clone.querySelector('.comment-modal');
         if (!modal) return;
         
-        // Position near marker
         const rect = marker.getBoundingClientRect();
-        const x = rect.left + window.scrollX + 30;
-        const y = rect.top + window.scrollY - 10;
+        modal.style.left = (rect.left + window.scrollX + 30) + 'px';
+        modal.style.top = (rect.top + window.scrollY - 10) + 'px';
         
-        modal.style.left = `${x}px`;
-        modal.style.top = `${y}px`;
+        const ta = modal.querySelector('.comment-modal__textarea');
+        const em = modal.querySelector('.comment-modal__email');
+        if (ta) ta.value = marker.dataset.comment || '';
+        if (em) em.value = marker.dataset.email || '';
         
-        // Pre-fill with saved comment data
-        const textarea = modal.querySelector('.comment-modal__textarea');
-        const emailInput = modal.querySelector('.comment-modal__email');
-        
-        if (textarea) textarea.value = marker.dataset.comment || '';
-        if (emailInput) emailInput.value = marker.dataset.email || '';
-        
-        // Store marker reference
-        modal.dataset.markerRef = 'true';
-        
-        // Add to DOM
         document.body.appendChild(modal);
         this.activeModal = modal;
     }
@@ -629,126 +479,57 @@ class SmoothNavigation {
     constructor() {
         this.navLinks = document.querySelectorAll('.nav__link');
         this.sections = document.querySelectorAll('.section');
-        
         this.init();
-        console.log('Smooth Navigation initialized');
+        console.log('Navigation: Ready');
     }
     
-    /**
-     * Initialize navigation
-     */
     init() {
-        this.setupEventListeners();
-        this.updateActiveLink();
-    }
-    
-    /**
-     * Setup event listeners
-     */
-    setupEventListeners() {
-        // Click handlers for nav links
         this.navLinks.forEach(link => {
-            link.addEventListener('click', (e) => this.handleNavClick(e));
+            link.addEventListener('click', this.handleClick.bind(this));
         });
         
-        // CTA button
-        const ctaButton = document.querySelector('.home__cta');
-        if (ctaButton) {
-            ctaButton.addEventListener('click', (e) => this.handleNavClick(e));
-        }
+        const cta = document.querySelector('.home__cta');
+        if (cta) cta.addEventListener('click', this.handleClick.bind(this));
         
-        // Scroll handler for active state (throttled)
         let ticking = false;
         window.addEventListener('scroll', () => {
             if (!ticking) {
-                window.requestAnimationFrame(() => {
-                    this.updateActiveLink();
+                requestAnimationFrame(() => {
+                    this.updateActive();
                     ticking = false;
                 });
                 ticking = true;
             }
         }, { passive: true });
+        
+        this.updateActive();
     }
     
-    /**
-     * Handle navigation click
-     */
-    handleNavClick(e) {
+    handleClick(e) {
         e.preventDefault();
-        
         const href = e.currentTarget.getAttribute('href');
-        const targetSection = document.querySelector(href);
-        
-        if (targetSection) {
+        const target = document.querySelector(href);
+        if (target) {
             const offset = window.innerWidth > 768 ? 80 : 20;
-            const targetPosition = targetSection.offsetTop - offset;
-            
-            window.scrollTo({
-                top: targetPosition,
-                behavior: 'smooth'
-            });
+            window.scrollTo({ top: target.offsetTop - offset, behavior: 'smooth' });
         }
     }
     
-    /**
-     * Update active navigation link based on scroll position
-     */
-    updateActiveLink() {
-        const scrollPosition = window.scrollY + window.innerHeight / 3;
-        
-        let currentSection = 'home';
+    updateActive() {
+        const scrollPos = window.scrollY + window.innerHeight / 3;
+        let current = 'home';
         
         this.sections.forEach(section => {
-            const sectionTop = section.offsetTop;
-            const sectionHeight = section.offsetHeight;
-            
-            if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-                currentSection = section.getAttribute('id');
+            const top = section.offsetTop;
+            const height = section.offsetHeight;
+            if (scrollPos >= top && scrollPos < top + height) {
+                current = section.id;
             }
         });
         
         this.navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-section') === currentSection) {
-                link.classList.add('active');
-            }
+            link.classList.toggle('active', link.dataset.section === current);
         });
-    }
-}
-
-/**
- * ============================================
- * SITE DATA LOADER
- * Load content from JSON file
- * ============================================ 
- */
-class SiteDataLoader {
-    constructor() {
-        this.dataPath = './content/site_data.json';
-    }
-    
-    /**
-     * Load site data (optional - content is already in HTML)
-     */
-    async load() {
-        try {
-            const response = await fetch(this.dataPath);
-            if (!response.ok) {
-                console.log('Site data file not found - using static HTML content');
-                return null;
-            }
-            const data = await response.json();
-            
-            // Update config email if provided
-            if (data.site && data.site.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
-                CONFIG.email = data.site.email;
-            }
-            
-            return data;
-        } catch (error) {
-            console.log('Using static HTML content');
-            return null;
-        }
     }
 }
 
@@ -757,51 +538,53 @@ class SiteDataLoader {
  * INITIALIZATION
  * ============================================
  */
-function initializeApp() {
-    console.log('Initializing Studio Duo Portfolio...');
+function init() {
+    console.log('Studio Duo Portfolio initializing...');
     
-    // Initialize all modules
-    const creativeTrace = new CreativeTrace();
-    const commentSystem = new CommentSystem();
-    const smoothNavigation = new SmoothNavigation();
-    const siteDataLoader = new SiteDataLoader();
+    new CreativeTrace();
+    new CommentSystem();
+    new SmoothNavigation();
     
-    // Load site data
-    siteDataLoader.load();
+    // Load site data for email config
+    fetch('./content/site_data.json')
+        .then(r => r.json())
+        .then(data => {
+            if (data?.site?.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
+                CONFIG.email = data.site.email;
+            }
+        })
+        .catch(() => {});
     
-    console.log('✓ Studio Duo Portfolio ready');
-    console.log('  - Draw: Click and drag anywhere');
-    console.log('  - Comment: Click on any content');
+    console.log('✓ Portfolio ready');
+    console.log('  Draw: Click + drag');
+    console.log('  Comment: Click on content');
 }
 
-// Initialize when DOM is ready
+// Start
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeApp);
+    document.addEventListener('DOMContentLoaded', init);
 } else {
-    // DOM already loaded
-    initializeApp();
+    init();
 }
 
-// Also try initializing on window load (backup for slow-loading pages)
+// Final canvas resize after full load
 window.addEventListener('load', () => {
-    // Resize canvas again after all resources loaded
-    const canvas = document.getElementById('creative-trace');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
-        const docHeight = Math.max(
-            document.body.scrollHeight,
-            document.documentElement.scrollHeight
-        );
-        const docWidth = document.documentElement.clientWidth;
-        
-        if (canvas.width !== docWidth || canvas.height !== docHeight) {
-            canvas.width = docWidth;
-            canvas.height = docHeight;
-            ctx.strokeStyle = CONFIG.canvasLineColor;
-            ctx.lineWidth = CONFIG.canvasLineWidth;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            console.log('Canvas final resize on load:', docWidth, 'x', docHeight);
+    setTimeout(() => {
+        const canvas = document.getElementById('creative-trace');
+        if (canvas) {
+            const ctx = canvas.getContext('2d');
+            const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
+            const w = Math.max(document.body.scrollWidth, window.innerWidth);
+            if (canvas.width !== w || canvas.height !== h) {
+                const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                canvas.width = w;
+                canvas.height = h;
+                ctx.putImageData(img, 0, 0);
+                ctx.strokeStyle = CONFIG.canvasLineColor;
+                ctx.lineWidth = CONFIG.canvasLineWidth;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+            }
         }
-    }
+    }, 100);
 });
