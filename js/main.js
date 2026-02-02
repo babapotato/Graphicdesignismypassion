@@ -15,17 +15,13 @@ const CONFIG = {
     clickThreshold: 5
 };
 
-// Global state
-const AppState = {
-    isDragging: false,
-    hasMoved: false,
-    startX: 0,
-    startY: 0
-};
+// Global state (kept minimal now that drawing is always-on)
+const AppState = {};
 
 /**
  * ============================================
  * CREATIVE TRACE - Canvas Drawing Feature
+ * Draws a continuous line following the cursor
  * ============================================
  */
 class CreativeTrace {
@@ -36,10 +32,9 @@ class CreativeTrace {
             return;
         }
         this.ctx = this.canvas.getContext('2d');
-        this.drawing = false;
-        this.prevX = 0;
-        this.prevY = 0;
-        this.hasStartedDrawing = false; // Track if we've started actual drawing
+        this.prevX = null;
+        this.prevY = null;
+        this.isFirstMove = true;
         
         this.init();
     }
@@ -53,7 +48,7 @@ class CreativeTrace {
         setTimeout(() => this.resizeCanvas(), 500);
         setTimeout(() => this.resizeCanvas(), 1500);
         
-        console.log('Creative Trace: Ready to draw');
+        console.log('Creative Trace: Line follows cursor');
     }
     
     setStyles() {
@@ -106,35 +101,33 @@ class CreativeTrace {
     }
     
     setupEventListeners() {
-        // Mouse events
-        document.addEventListener('mousedown', this.onMouseDown.bind(this));
+        // Mouse move - always draw, no click needed
         document.addEventListener('mousemove', this.onMouseMove.bind(this));
-        document.addEventListener('mouseup', this.onMouseUp.bind(this));
-        document.addEventListener('mouseleave', this.onMouseUp.bind(this));
         
-        // Touch events
-        document.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: true });
-        document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
-        document.addEventListener('touchend', this.onMouseUp.bind(this));
-        document.addEventListener('touchcancel', this.onMouseUp.bind(this));
+        // Mouse leaves window - reset so line doesn't jump when re-entering
+        document.addEventListener('mouseleave', () => {
+            this.isFirstMove = true;
+        });
+        
+        // Touch events for mobile
+        document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: true });
+        document.addEventListener('touchend', () => {
+            this.isFirstMove = true;
+        });
+        document.addEventListener('touchcancel', () => {
+            this.isFirstMove = true;
+        });
         
         // Resize
         window.addEventListener('resize', () => {
             setTimeout(() => this.resizeCanvas(), 100);
         });
         
-        // Scroll
+        // Scroll - reset to prevent jumps and resize canvas
         window.addEventListener('scroll', () => {
+            this.isFirstMove = true;
             setTimeout(() => this.resizeCanvas(), 200);
         }, { passive: true });
-    }
-    
-    isInteractive(el) {
-        if (!el) return false;
-        const tag = el.tagName;
-        if (['A', 'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) return true;
-        if (el.closest('.nav, .comment-modal, .comment-marker')) return true;
-        return false;
     }
     
     getPos(e) {
@@ -144,109 +137,47 @@ class CreativeTrace {
         return { x: e.pageX, y: e.pageY };
     }
     
-    onMouseDown(e) {
-        if (this.isInteractive(e.target)) return;
-        
-        const pos = this.getPos(e);
-        
-        this.drawing = true;
-        this.hasStartedDrawing = false;
-        this.prevX = pos.x;
-        this.prevY = pos.y;
-        
-        // Store start position for click detection
-        AppState.isDragging = true;
-        AppState.hasMoved = false;
-        AppState.startX = pos.x;
-        AppState.startY = pos.y;
-    }
-    
     onMouseMove(e) {
-        if (!this.drawing) return;
-        
         const pos = this.getPos(e);
         
-        // Calculate total distance from start
-        const dx = pos.x - AppState.startX;
-        const dy = pos.y - AppState.startY;
-        const totalDist = Math.sqrt(dx * dx + dy * dy);
-        
-        // Only draw if moved past threshold
-        if (totalDist > CONFIG.clickThreshold) {
-            AppState.hasMoved = true;
-            
-            // If this is the first draw stroke, start from the original click point
-            if (!this.hasStartedDrawing) {
-                this.hasStartedDrawing = true;
-                this.prevX = AppState.startX;
-                this.prevY = AppState.startY;
-            }
-            
-            // Draw line segment
-            this.ctx.beginPath();
-            this.ctx.moveTo(this.prevX, this.prevY);
-            this.ctx.lineTo(pos.x, pos.y);
-            this.ctx.stroke();
-            
-            // Update previous position for next segment
+        // First move after entering - just record position, don't draw
+        if (this.isFirstMove) {
             this.prevX = pos.x;
             this.prevY = pos.y;
+            this.isFirstMove = false;
+            return;
         }
-    }
-    
-    onMouseUp() {
-        this.drawing = false;
-        this.hasStartedDrawing = false;
-        AppState.isDragging = false;
-    }
-    
-    onTouchStart(e) {
-        if (this.isInteractive(e.target)) return;
-        if (e.touches.length !== 1) return; // Only single touch
         
-        const pos = this.getPos(e);
+        // Draw line from previous position to current
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.prevX, this.prevY);
+        this.ctx.lineTo(pos.x, pos.y);
+        this.ctx.stroke();
         
-        this.drawing = true;
-        this.hasStartedDrawing = false;
+        // Update previous position
         this.prevX = pos.x;
         this.prevY = pos.y;
-        
-        AppState.isDragging = true;
-        AppState.hasMoved = false;
-        AppState.startX = pos.x;
-        AppState.startY = pos.y;
     }
     
     onTouchMove(e) {
-        if (!this.drawing) return;
         if (e.touches.length !== 1) return;
         
         const pos = this.getPos(e);
         
-        const dx = pos.x - AppState.startX;
-        const dy = pos.y - AppState.startY;
-        const totalDist = Math.sqrt(dx * dx + dy * dy);
-        
-        if (totalDist > CONFIG.clickThreshold) {
-            // Prevent scrolling while drawing
-            e.preventDefault();
-            
-            AppState.hasMoved = true;
-            
-            if (!this.hasStartedDrawing) {
-                this.hasStartedDrawing = true;
-                this.prevX = AppState.startX;
-                this.prevY = AppState.startY;
-            }
-            
-            this.ctx.beginPath();
-            this.ctx.moveTo(this.prevX, this.prevY);
-            this.ctx.lineTo(pos.x, pos.y);
-            this.ctx.stroke();
-            
+        if (this.isFirstMove) {
             this.prevX = pos.x;
             this.prevY = pos.y;
+            this.isFirstMove = false;
+            return;
         }
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.prevX, this.prevY);
+        this.ctx.lineTo(pos.x, pos.y);
+        this.ctx.stroke();
+        
+        this.prevX = pos.x;
+        this.prevY = pos.y;
     }
 }
 
@@ -282,13 +213,6 @@ class CommentSystem {
     
     handleClick(e) {
         const target = e.target;
-        
-        // Skip if user was drawing
-        if (AppState.hasMoved) {
-            // Reset for next interaction
-            setTimeout(() => { AppState.hasMoved = false; }, 10);
-            return;
-        }
         
         // Handle marker click
         if (target.classList.contains('comment-marker')) {
