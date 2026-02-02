@@ -123,9 +123,8 @@ class CreativeTrace {
             setTimeout(() => this.resizeCanvas(), 100);
         });
         
-        // Scroll - reset to prevent jumps and resize canvas
+        // Scroll - keep drawing, just resize canvas if needed
         window.addEventListener('scroll', () => {
-            this.isFirstMove = true;
             setTimeout(() => this.resizeCanvas(), 200);
         }, { passive: true });
     }
