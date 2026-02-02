@@ -10,7 +10,6 @@ const CONFIG = {
     email: '[INSERT_EMAIL_HERE]',
     useFormspree: false,
     formspreeEndpoint: 'https://formspree.io/f/YOUR_FORM_ID',
-    instagramHandle: '@maximilian_kamber',
     canvasLineColor: '#0000FF',
     canvasLineWidth: 1,
     canvasLineWidthMin: 0.6,
@@ -19,9 +18,6 @@ const CONFIG = {
     canvasSpeedMax: 1.1,
     clickThreshold: 5
 };
-
-// Global state (kept minimal now that drawing is always-on)
-const AppState = {};
 
 /**
  * ============================================
@@ -626,12 +622,9 @@ function init() {
             if (data?.site?.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
                 CONFIG.email = data.site.email;
             }
-            const handle = data?.instagram?.username || CONFIG.instagramHandle;
-            loadInstagramImages(handle, data);
+            applyProjectImages(data);
         })
-        .catch(() => {
-            loadInstagramImages(CONFIG.instagramHandle, null);
-        });
+        .catch(() => {});
     
     console.log('✓ Portfolio ready');
     console.log('  Draw: Click + drag');
@@ -669,18 +662,17 @@ window.addEventListener('load', () => {
 
 /**
  * ============================================
- * PROJECT IMAGES (Instagram or fallback)
+ * PROJECT IMAGES
  * ============================================
  */
 function applyProjectImages(data) {
     const imageEls = document.querySelectorAll('.project__image');
     if (!imageEls.length) return;
 
-    const instagramImages = Array.isArray(data?.instagram?.images) ? data.instagram.images : [];
     const fallbackImages = Array.isArray(data?.sections?.projects?.items)
         ? data.sections.projects.items.map(item => item.image).filter(Boolean)
         : [];
-    const sources = instagramImages.length ? instagramImages : fallbackImages;
+    const sources = fallbackImages;
 
     imageEls.forEach((el, index) => {
         const src = sources[index % sources.length];
@@ -697,102 +689,4 @@ function applyProjectImages(data) {
             el.setAttribute('aria-label', title);
         }
     });
-}
-
-async function loadInstagramImages(handle, data) {
-    const images = await fetchInstagramImages(handle, 8);
-    if (images.length) {
-        applyProjectImages({ ...data, instagram: { images } });
-        return;
-    }
-    if (data) {
-        applyProjectImages(data);
-    }
-}
-
-async function fetchInstagramImages(handle, limit = 8) {
-    if (!handle) return [];
-    const cleanHandle = handle.replace(/^@/, '');
-
-    const endpoints = [
-        `https://r.jina.ai/http://instagram.com/${cleanHandle}/?__a=1&__d=dis`,
-        `https://r.jina.ai/http://instagram.com/${cleanHandle}/`
-    ];
-
-    for (const endpoint of endpoints) {
-        try {
-            const res = await fetch(endpoint, { cache: 'no-store' });
-            if (!res.ok) continue;
-            const text = await res.text();
-
-            const imagesFromJson = parseInstagramJson(text);
-            if (imagesFromJson.length) {
-                return imagesFromJson.slice(0, limit);
-            }
-
-            const imagesFromHtml = parseInstagramHtml(text);
-            if (imagesFromHtml.length) {
-                return imagesFromHtml.slice(0, limit);
-            }
-        } catch (e) {
-            // ignore and try next endpoint
-        }
-    }
-
-    return [];
-}
-
-function parseInstagramJson(text) {
-    const jsonText = extractJsonText(text);
-    if (!jsonText) return [];
-    try {
-        const data = JSON.parse(jsonText);
-        const edges =
-            data?.graphql?.user?.edge_owner_to_timeline_media?.edges ||
-            data?.user?.edge_owner_to_timeline_media?.edges ||
-            [];
-        return edges
-            .map(edge => edge?.node?.display_url || edge?.node?.thumbnail_src)
-            .filter(Boolean);
-    } catch (e) {
-        return [];
-    }
-}
-
-function parseInstagramHtml(text) {
-    const urls = [];
-    const regex = /"(display_url|thumbnail_src)":"(.*?)"/g;
-    let match;
-    while ((match = regex.exec(text)) !== null) {
-        const raw = match[2];
-        if (!raw) continue;
-        const decoded = raw
-            .replace(/\\u0026/g, '&')
-            .replace(/\\u003d/g, '=')
-            .replace(/\\u002F/g, '/')
-            .replace(/\\/g, '');
-        if (decoded.startsWith('http')) {
-            urls.push(decoded);
-        }
-    }
-    
-    const ogRegex = new RegExp('content="(https:\\\\\/\\\\/[^"]+\\\\.(jpg|jpeg|png))"', 'g');
-    while ((match = ogRegex.exec(text)) !== null) {
-        const decoded = match[1].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=').replace(/\\u002F/g, '/').replace(/\\/g, '');
-        urls.push(decoded);
-    }
-    return Array.from(new Set(urls));
-}
-
-function extractJsonText(text) {
-    const sharedDataMatch = text.match(/window\._sharedData\s*=\s*(\{[\s\S]*?\});/);
-    if (sharedDataMatch?.[1]) return sharedDataMatch[1];
-    const additionalDataMatch = text.match(/window\.__additionalDataLoaded\([^,]+,(\{[\s\S]*?\})\);/);
-    if (additionalDataMatch?.[1]) return additionalDataMatch[1];
-    const firstBrace = text.indexOf('{');
-    const lastBrace = text.lastIndexOf('}');
-    if (firstBrace !== -1 && lastBrace > firstBrace) {
-        return text.slice(firstBrace, lastBrace + 1);
-    }
-    return null;
 }
