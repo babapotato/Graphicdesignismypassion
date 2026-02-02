@@ -10,6 +10,7 @@ const CONFIG = {
     email: '[INSERT_EMAIL_HERE]',
     useFormspree: false,
     formspreeEndpoint: 'https://formspree.io/f/YOUR_FORM_ID',
+    instagramHandle: 'maximilian_kamber',
     canvasLineColor: '#0000FF',
     canvasLineWidth: 1,
     canvasLineWidthMin: 0.6,
@@ -610,9 +611,12 @@ function init() {
             if (data?.site?.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
                 CONFIG.email = data.site.email;
             }
-            applyProjectImages(data);
+            const handle = data?.instagram?.username || CONFIG.instagramHandle;
+            loadInstagramImages(handle, data);
         })
-        .catch(() => {});
+        .catch(() => {
+            loadInstagramImages(CONFIG.instagramHandle, null);
+        });
     
     console.log('✓ Portfolio ready');
     console.log('  Draw: Click + drag');
@@ -678,4 +682,80 @@ function applyProjectImages(data) {
             el.setAttribute('aria-label', title);
         }
     });
+}
+
+async function loadInstagramImages(handle, data) {
+    const images = await fetchInstagramImages(handle, 8);
+    if (images.length) {
+        applyProjectImages({ ...data, instagram: { images } });
+        return;
+    }
+    if (data) {
+        applyProjectImages(data);
+    }
+}
+
+async function fetchInstagramImages(handle, limit = 8) {
+    if (!handle) return [];
+
+    const endpoints = [
+        `https://r.jina.ai/http://instagram.com/${handle}/?__a=1&__d=dis`,
+        `https://r.jina.ai/http://instagram.com/${handle}/`
+    ];
+
+    for (const endpoint of endpoints) {
+        try {
+            const res = await fetch(endpoint, { cache: 'no-store' });
+            if (!res.ok) continue;
+            const text = await res.text();
+
+            const imagesFromJson = parseInstagramJson(text);
+            if (imagesFromJson.length) {
+                return imagesFromJson.slice(0, limit);
+            }
+
+            const imagesFromHtml = parseInstagramHtml(text);
+            if (imagesFromHtml.length) {
+                return imagesFromHtml.slice(0, limit);
+            }
+        } catch (e) {
+            // ignore and try next endpoint
+        }
+    }
+
+    return [];
+}
+
+function parseInstagramJson(text) {
+    try {
+        const data = JSON.parse(text);
+        const edges =
+            data?.graphql?.user?.edge_owner_to_timeline_media?.edges ||
+            data?.user?.edge_owner_to_timeline_media?.edges ||
+            [];
+        return edges
+            .map(edge => edge?.node?.display_url)
+            .filter(Boolean);
+    } catch (e) {
+        return [];
+    }
+}
+
+function parseInstagramHtml(text) {
+    const urls = [];
+    const regex = /"display_url":"(.*?)"/g;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+        const raw = match[1];
+        if (!raw) continue;
+        const decoded = raw
+            .replace(/\\u0026/g, '&')
+            .replace(/\\u003d/g, '=')
+            .replace(/\\u002F/g, '/')
+            .replace(/\\/g, '');
+        if (decoded.startsWith('http')) {
+            urls.push(decoded);
+        }
+    }
+    return Array.from(new Set(urls));
 }
