@@ -127,6 +127,13 @@ input, textarea {
     z-index: var(--z-canvas);
 }
 
+@media (max-width: 768px) {
+    #creative-trace {
+        position: fixed;
+        height: 100%;
+    }
+}
+
 /* ============================================
    NAVIGATION
    ============================================ */

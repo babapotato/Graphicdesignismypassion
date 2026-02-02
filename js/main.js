@@ -45,6 +45,7 @@ class CreativeTrace {
         this.lastMidX = null;
         this.lastMidY = null;
         this.lastDrawTime = null;
+        this.isScreenLocked = this.isScreenLockedMode();
         
         this.init();
     }
@@ -68,7 +69,28 @@ class CreativeTrace {
         this.ctx.lineJoin = 'round';
     }
     
+    isScreenLockedMode() {
+        return window.matchMedia('(max-width: 768px)').matches || 'ontouchstart' in window;
+    }
+
+    resetTraceState() {
+        this.isFirstMove = true;
+        this.lastClientX = null;
+        this.lastClientY = null;
+        this.lastMidX = null;
+        this.lastMidY = null;
+        this.lastDrawTime = null;
+        this.prevX = null;
+        this.prevY = null;
+    }
+
     resizeCanvas() {
+        const mode = this.isScreenLockedMode();
+        if (mode !== this.isScreenLocked) {
+            this.isScreenLocked = mode;
+            this.resetTraceState();
+        }
+
         const docHeight = Math.max(
             document.body.scrollHeight,
             document.body.offsetHeight,
@@ -83,9 +105,12 @@ class CreativeTrace {
             document.documentElement.offsetWidth,
             window.innerWidth
         );
-        
+
+        const targetWidth = this.isScreenLocked ? window.innerWidth : docWidth;
+        const targetHeight = this.isScreenLocked ? window.innerHeight : docHeight;
+
         // Skip if no change
-        if (this.canvas.width === docWidth && this.canvas.height === docHeight) {
+        if (this.canvas.width === targetWidth && this.canvas.height === targetHeight) {
             return;
         }
         
@@ -98,8 +123,8 @@ class CreativeTrace {
         } catch (e) { /* ignore */ }
         
         // Resize
-        this.canvas.width = docWidth;
-        this.canvas.height = docHeight;
+        this.canvas.width = targetWidth;
+        this.canvas.height = targetHeight;
         
         // Restore drawing
         if (imageData) {
@@ -107,7 +132,7 @@ class CreativeTrace {
         }
         
         this.setStyles();
-        console.log(`Canvas: ${docWidth}x${docHeight}`);
+        console.log(`Canvas: ${targetWidth}x${targetHeight}`);
     }
     
     setupEventListeners() {
@@ -116,31 +141,16 @@ class CreativeTrace {
         
         // Mouse leaves window - reset so line doesn't jump when re-entering
         document.addEventListener('mouseleave', () => {
-            this.isFirstMove = true;
-            this.lastClientX = null;
-            this.lastClientY = null;
-            this.lastMidX = null;
-            this.lastMidY = null;
-            this.lastDrawTime = null;
+            this.resetTraceState();
         });
         
         // Touch events for mobile
         document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: true });
         document.addEventListener('touchend', () => {
-            this.isFirstMove = true;
-            this.lastClientX = null;
-            this.lastClientY = null;
-            this.lastMidX = null;
-            this.lastMidY = null;
-            this.lastDrawTime = null;
+            this.resetTraceState();
         });
         document.addEventListener('touchcancel', () => {
-            this.isFirstMove = true;
-            this.lastClientX = null;
-            this.lastClientY = null;
-            this.lastMidX = null;
-            this.lastMidY = null;
-            this.lastDrawTime = null;
+            this.resetTraceState();
         });
         
         // Resize
@@ -162,9 +172,13 @@ class CreativeTrace {
     
     getPos(e) {
         if (e.touches && e.touches.length > 0) {
-            return { x: e.touches[0].pageX, y: e.touches[0].pageY };
+            return this.isScreenLocked
+                ? { x: e.touches[0].clientX, y: e.touches[0].clientY }
+                : { x: e.touches[0].pageX, y: e.touches[0].pageY };
         }
-        return { x: e.pageX, y: e.pageY };
+        return this.isScreenLocked
+            ? { x: e.clientX, y: e.clientY }
+            : { x: e.pageX, y: e.pageY };
     }
     
     onMouseMove(e) {
@@ -185,6 +199,7 @@ class CreativeTrace {
     }
 
     onScroll() {
+        if (this.isScreenLocked) return;
         this.resizeCanvas();
         
         if (this.lastClientX === null || this.lastClientY === null) {
@@ -697,10 +712,11 @@ async function loadInstagramImages(handle, data) {
 
 async function fetchInstagramImages(handle, limit = 8) {
     if (!handle) return [];
+    const cleanHandle = handle.replace(/^@/, '');
 
     const endpoints = [
-        `https://r.jina.ai/http://instagram.com/${handle}/?__a=1&__d=dis`,
-        `https://r.jina.ai/http://instagram.com/${handle}/`
+        `https://r.jina.ai/http://instagram.com/${cleanHandle}/?__a=1&__d=dis`,
+        `https://r.jina.ai/http://instagram.com/${cleanHandle}/`
     ];
 
     for (const endpoint of endpoints) {
@@ -727,14 +743,16 @@ async function fetchInstagramImages(handle, limit = 8) {
 }
 
 function parseInstagramJson(text) {
+    const jsonText = extractJsonText(text);
+    if (!jsonText) return [];
     try {
-        const data = JSON.parse(text);
+        const data = JSON.parse(jsonText);
         const edges =
             data?.graphql?.user?.edge_owner_to_timeline_media?.edges ||
             data?.user?.edge_owner_to_timeline_media?.edges ||
             [];
         return edges
-            .map(edge => edge?.node?.display_url)
+            .map(edge => edge?.node?.display_url || edge?.node?.thumbnail_src)
             .filter(Boolean);
     } catch (e) {
         return [];
@@ -743,10 +761,10 @@ function parseInstagramJson(text) {
 
 function parseInstagramHtml(text) {
     const urls = [];
-    const regex = /"display_url":"(.*?)"/g;
+    const regex = /"(display_url|thumbnail_src)":"(.*?)"/g;
     let match;
     while ((match = regex.exec(text)) !== null) {
-        const raw = match[1];
+        const raw = match[2];
         if (!raw) continue;
         const decoded = raw
             .replace(/\\u0026/g, '&')
@@ -757,5 +775,24 @@ function parseInstagramHtml(text) {
             urls.push(decoded);
         }
     }
+    
+    const ogRegex = new RegExp('content="(https:\\\\\/\\\\/[^"]+\\\\.(jpg|jpeg|png))"', 'g');
+    while ((match = ogRegex.exec(text)) !== null) {
+        const decoded = match[1].replace(/\\u0026/g, '&').replace(/\\u003d/g, '=').replace(/\\u002F/g, '/').replace(/\\/g, '');
+        urls.push(decoded);
+    }
     return Array.from(new Set(urls));
+}
+
+function extractJsonText(text) {
+    const sharedDataMatch = text.match(/window\._sharedData\s*=\s*(\{[\s\S]*?\});/);
+    if (sharedDataMatch?.[1]) return sharedDataMatch[1];
+    const additionalDataMatch = text.match(/window\.__additionalDataLoaded\([^,]+,(\{[\s\S]*?\})\);/);
+    if (additionalDataMatch?.[1]) return additionalDataMatch[1];
+    const firstBrace = text.indexOf('{');
+    const lastBrace = text.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+        return text.slice(firstBrace, lastBrace + 1);
+    }
+    return null;
 }

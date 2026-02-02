@@ -1,7 +1,7 @@
 {
   "site": {
-    "title": "Studio Duo",
-    "description": "A design duo creating meaningful experiences",
+    "title": "Studio Mooh",
+    "description": "Science-backed creativity",
     "email": "[INSERT_EMAIL_HERE]"
   },
   "navigation": {
@@ -14,7 +14,7 @@
   },
   "sections": {
     "home": {
-      "headline": "We design with intention.",
+      "headline": "Foremost with you",
       "subheadline": "A design duo crafting digital experiences that resonate.",
       "cta": "See our work"
     },
