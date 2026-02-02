@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Studio Duo — A design duo creating meaningful digital experiences">
+    <title>Studio Duo — Design Portfolio</title>
+    
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    
+    <!-- Stylesheet -->
+    <link rel="stylesheet" href="css/style.css">
+    
+    <!-- Favicon placeholder -->
+    <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+</head>
+<body>
+    <!-- ============================================
+         CREATIVE TRACE CANVAS
+         Persistent canvas for drawing blue lines
+         ============================================ -->
+    <canvas id="creative-trace" aria-hidden="true"></canvas>
+
+    <!-- ============================================
+         NAVIGATION - Desktop (top) / Mobile (bottom pill)
+         ============================================ -->
+    <nav class="nav" id="main-nav">
+        <ul class="nav__list">
+            <li><a href="#home" class="nav__link" data-section="home">Home</a></li>
+            <li><a href="#projects" class="nav__link" data-section="projects">Projects</a></li>
+            <li><a href="#us" class="nav__link" data-section="us">Us</a></li>
+            <li><a href="#contact" class="nav__link" data-section="contact">Contact</a></li>
+        </ul>
+    </nav>
+
+    <!-- ============================================
+         MAIN CONTENT WRAPPER
+         ============================================ -->
+    <main class="main" id="main-content">
+        
+        <!-- HOME SECTION -->
+        <section id="home" class="section section--home" data-commentable>
+            <div class="section__content">
+                <h1 class="home__headline" data-commentable>We design with intention.</h1>
+                <p class="home__subheadline" data-commentable>A design duo crafting digital experiences that resonate.</p>
+                <a href="#projects" class="home__cta" data-commentable>See our work ↓</a>
+            </div>
+        </section>
+
+        <!-- PROJECTS SECTION -->
+        <section id="projects" class="section section--projects" data-commentable>
+            <div class="section__content">
+                <header class="section__header">
+                    <h2 class="section__title" data-commentable>Projects</h2>
+                    <p class="section__intro" data-commentable>Selected works from our collaborative practice.</p>
+                </header>
+                
+                <div class="projects__grid" id="projects-grid">
+                    <!-- Project items will be dynamically loaded from JSON -->
+                    
+                    <article class="project" data-commentable>
+                        <div class="project__image-wrapper">
+                            <div class="project__image project__image--placeholder" data-commentable></div>
+                        </div>
+                        <div class="project__info">
+                            <h3 class="project__title" data-commentable>Brand Identity — Nordic Studio</h3>
+                            <p class="project__description" data-commentable>Complete visual identity system for a Scandinavian architecture firm.</p>
+                            <div class="project__meta">
+                                <span class="project__year" data-commentable>2025</span>
+                                <div class="project__tags">
+                                    <span class="project__tag" data-commentable>Branding</span>
+                                    <span class="project__tag" data-commentable>Identity</span>
+                                    <span class="project__tag" data-commentable>Print</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="project" data-commentable>
+                        <div class="project__image-wrapper">
+                            <div class="project__image project__image--placeholder" data-commentable></div>
+                        </div>
+                        <div class="project__info">
+                            <h3 class="project__title" data-commentable>Website — Forma Gallery</h3>
+                            <p class="project__description" data-commentable>Minimalist web experience for a contemporary art gallery.</p>
+                            <div class="project__meta">
+                                <span class="project__year" data-commentable>2025</span>
+                                <div class="project__tags">
+                                    <span class="project__tag" data-commentable>Web</span>
+                                    <span class="project__tag" data-commentable>UI/UX</span>
+                                    <span class="project__tag" data-commentable>Development</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="project" data-commentable>
+                        <div class="project__image-wrapper">
+                            <div class="project__image project__image--placeholder" data-commentable></div>
+                        </div>
+                        <div class="project__info">
+                            <h3 class="project__title" data-commentable>Editorial — Process Magazine</h3>
+                            <p class="project__description" data-commentable>Art direction and layout design for quarterly design publication.</p>
+                            <div class="project__meta">
+                                <span class="project__year" data-commentable>2024</span>
+                                <div class="project__tags">
+                                    <span class="project__tag" data-commentable>Editorial</span>
+                                    <span class="project__tag" data-commentable>Typography</span>
+                                    <span class="project__tag" data-commentable>Print</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="project" data-commentable>
+                        <div class="project__image-wrapper">
+                            <div class="project__image project__image--placeholder" data-commentable></div>
+                        </div>
+                        <div class="project__info">
+                            <h3 class="project__title" data-commentable>App Design — Mindful</h3>
+                            <p class="project__description" data-commentable>Mobile application design for a meditation and wellness platform.</p>
+                            <div class="project__meta">
+                                <span class="project__year" data-commentable>2024</span>
+                                <div class="project__tags">
+                                    <span class="project__tag" data-commentable>Mobile</span>
+                                    <span class="project__tag" data-commentable>UI/UX</span>
+                                    <span class="project__tag" data-commentable>Branding</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- US SECTION -->
+        <section id="us" class="section section--us" data-commentable>
+            <div class="section__content">
+                <header class="section__header">
+                    <h2 class="section__title" data-commentable>Us</h2>
+                    <p class="section__intro" data-commentable>Two designers, one shared vision.</p>
+                </header>
+
+                <div class="us__description" data-commentable>
+                    <p>We are a design duo based in the intersection of strategy and aesthetics. Our work spans brand identity, digital experiences, and editorial design. We believe in the power of restraint—that what you leave out matters as much as what you include.</p>
+                </div>
+
+                <div class="us__members">
+                    <div class="member" data-commentable>
+                        <div class="member__image member__image--placeholder" data-commentable></div>
+                        <h3 class="member__name" data-commentable>Alex Chen</h3>
+                        <p class="member__role" data-commentable>Creative Director</p>
+                        <p class="member__bio" data-commentable>With a background in architecture and graphic design, Alex brings spatial thinking to every project.</p>
+                    </div>
+                    <div class="member" data-commentable>
+                        <div class="member__image member__image--placeholder" data-commentable></div>
+                        <h3 class="member__name" data-commentable>Jordan Ellis</h3>
+                        <p class="member__role" data-commentable>Design Director</p>
+                        <p class="member__bio" data-commentable>Jordan's background in typography and motion design adds depth and movement to our visual language.</p>
+                    </div>
+                </div>
+
+                <div class="us__philosophy" data-commentable>
+                    <h3 class="philosophy__title" data-commentable>Our Approach</h3>
+                    <ul class="philosophy__list">
+                        <li data-commentable>Clarity over complexity</li>
+                        <li data-commentable>Function informs form</li>
+                        <li data-commentable>Details make the difference</li>
+                        <li data-commentable>Collaboration is key</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- CONTACT SECTION -->
+        <section id="contact" class="section section--contact" data-commentable>
+            <div class="section__content">
+                <header class="section__header">
+                    <h2 class="section__title" data-commentable>Contact</h2>
+                    <p class="section__intro" data-commentable>Let's create something meaningful together.</p>
+                </header>
+
+                <div class="contact__info">
+                    <a href="mailto:[INSERT_EMAIL_HERE]" class="contact__email" data-commentable>[INSERT_EMAIL_HERE]</a>
+                    <p class="contact__location" data-commentable>Available worldwide</p>
+                </div>
+
+                <div class="contact__social">
+                    <a href="#" class="social__link" data-commentable>Instagram</a>
+                    <a href="#" class="social__link" data-commentable>LinkedIn</a>
+                    <a href="#" class="social__link" data-commentable>Behance</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================================
+         FOOTER
+         ============================================ -->
+    <footer class="footer" data-commentable>
+        <p class="footer__copyright" data-commentable>© 2026 Studio Duo. All rights reserved.</p>
+        <p class="footer__note" data-commentable>Click anywhere to leave a comment.</p>
+    </footer>
+
+    <!-- ============================================
+         COMMENT MODAL TEMPLATE
+         ============================================ -->
+    <template id="comment-modal-template">
+        <div class="comment-modal">
+            <button class="comment-modal__close" aria-label="Close comment modal">&times;</button>
+            <form class="comment-modal__form">
+                <textarea 
+                    class="comment-modal__textarea" 
+                    placeholder="Leave a comment or question..." 
+                    required
+                    rows="4"
+                ></textarea>
+                <input 
+                    type="email" 
+                    class="comment-modal__email" 
+                    placeholder="Your email" 
+                    required
+                >
+                <button type="submit" class="comment-modal__submit">Send</button>
+            </form>
+        </div>
+    </template>
+
+    <!-- ============================================
+         COMMENT MARKER TEMPLATE (+ icon)
+         ============================================ -->
+    <template id="comment-marker-template">
+        <button class="comment-marker" aria-label="View comment">+</button>
+    </template>
+
+    <!-- JavaScript -->
+    <script src="js/main.js"></script>
+</body>
+</html>

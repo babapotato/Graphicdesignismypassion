@@ -1,0 +1,103 @@
+{
+  "site": {
+    "title": "Studio Duo",
+    "description": "A design duo creating meaningful experiences",
+    "email": "[INSERT_EMAIL_HERE]"
+  },
+  "navigation": {
+    "items": [
+      { "id": "home", "label": "Home" },
+      { "id": "projects", "label": "Projects" },
+      { "id": "us", "label": "Us" },
+      { "id": "contact", "label": "Contact" }
+    ]
+  },
+  "sections": {
+    "home": {
+      "headline": "We design with intention.",
+      "subheadline": "A design duo crafting digital experiences that resonate.",
+      "cta": "See our work"
+    },
+    "projects": {
+      "title": "Projects",
+      "intro": "Selected works from our collaborative practice.",
+      "items": [
+        {
+          "id": "project-1",
+          "title": "Brand Identity — Nordic Studio",
+          "description": "Complete visual identity system for a Scandinavian architecture firm.",
+          "year": "2025",
+          "image": "assets/images/project-1.jpg",
+          "tags": ["Branding", "Identity", "Print"]
+        },
+        {
+          "id": "project-2",
+          "title": "Website — Forma Gallery",
+          "description": "Minimalist web experience for a contemporary art gallery.",
+          "year": "2025",
+          "image": "assets/images/project-2.jpg",
+          "tags": ["Web", "UI/UX", "Development"]
+        },
+        {
+          "id": "project-3",
+          "title": "Editorial — Process Magazine",
+          "description": "Art direction and layout design for quarterly design publication.",
+          "year": "2024",
+          "image": "assets/images/project-3.jpg",
+          "tags": ["Editorial", "Typography", "Print"]
+        },
+        {
+          "id": "project-4",
+          "title": "App Design — Mindful",
+          "description": "Mobile application design for a meditation and wellness platform.",
+          "year": "2024",
+          "image": "assets/images/project-4.jpg",
+          "tags": ["Mobile", "UI/UX", "Branding"]
+        }
+      ]
+    },
+    "us": {
+      "title": "Us",
+      "intro": "Two designers, one shared vision.",
+      "description": "We are a design duo based in the intersection of strategy and aesthetics. Our work spans brand identity, digital experiences, and editorial design. We believe in the power of restraint—that what you leave out matters as much as what you include.",
+      "members": [
+        {
+          "name": "Alex Chen",
+          "role": "Creative Director",
+          "bio": "With a background in architecture and graphic design, Alex brings spatial thinking to every project.",
+          "image": "assets/images/member-1.jpg"
+        },
+        {
+          "name": "Jordan Ellis",
+          "role": "Design Director",
+          "bio": "Jordan's background in typography and motion design adds depth and movement to our visual language.",
+          "image": "assets/images/member-2.jpg"
+        }
+      ],
+      "philosophy": {
+        "title": "Our Approach",
+        "points": [
+          "Clarity over complexity",
+          "Function informs form",
+          "Details make the difference",
+          "Collaboration is key"
+        ]
+      }
+    },
+    "contact": {
+      "title": "Contact",
+      "intro": "Let's create something meaningful together.",
+      "email": "[INSERT_EMAIL_HERE]",
+      "location": "Available worldwide",
+      "social": [
+        { "platform": "Instagram", "url": "#", "handle": "@studioduo" },
+        { "platform": "LinkedIn", "url": "#", "handle": "Studio Duo" },
+        { "platform": "Behance", "url": "#", "handle": "studioduo" }
+      ]
+    }
+  },
+  "footer": {
+    "copyright": "© 2026 Studio Duo. All rights reserved.",
+    "note": "Click anywhere to leave a comment."
+  }
+}
