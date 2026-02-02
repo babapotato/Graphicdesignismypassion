@@ -10,7 +10,7 @@ const CONFIG = {
     email: '[INSERT_EMAIL_HERE]',
     useFormspree: false,
     formspreeEndpoint: 'https://formspree.io/f/YOUR_FORM_ID',
-    instagramHandle: 'maximilian_kamber',
+    instagramHandle: '@maximilian_kamber',
     canvasLineColor: '#0000FF',
     canvasLineWidth: 1,
     canvasLineWidthMin: 0.6,
