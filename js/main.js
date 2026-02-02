@@ -12,6 +12,10 @@ const CONFIG = {
     formspreeEndpoint: 'https://formspree.io/f/YOUR_FORM_ID',
     canvasLineColor: '#0000FF',
     canvasLineWidth: 1,
+    canvasLineWidthMin: 0.6,
+    canvasLineWidthMax: 4.5,
+    canvasSpeedMin: 0.02,
+    canvasSpeedMax: 1.1,
     clickThreshold: 5
 };
 
@@ -37,6 +41,9 @@ class CreativeTrace {
         this.isFirstMove = true;
         this.lastClientX = null;
         this.lastClientY = null;
+        this.lastMidX = null;
+        this.lastMidY = null;
+        this.lastDrawTime = null;
         
         this.init();
     }
@@ -111,6 +118,9 @@ class CreativeTrace {
             this.isFirstMove = true;
             this.lastClientX = null;
             this.lastClientY = null;
+            this.lastMidX = null;
+            this.lastMidY = null;
+            this.lastDrawTime = null;
         });
         
         // Touch events for mobile
@@ -119,11 +129,17 @@ class CreativeTrace {
             this.isFirstMove = true;
             this.lastClientX = null;
             this.lastClientY = null;
+            this.lastMidX = null;
+            this.lastMidY = null;
+            this.lastDrawTime = null;
         });
         document.addEventListener('touchcancel', () => {
             this.isFirstMove = true;
             this.lastClientX = null;
             this.lastClientY = null;
+            this.lastMidX = null;
+            this.lastMidY = null;
+            this.lastDrawTime = null;
         });
         
         // Resize
@@ -154,24 +170,7 @@ class CreativeTrace {
         this.lastClientX = e.clientX;
         this.lastClientY = e.clientY;
         const pos = this.getPos(e);
-        
-        // First move after entering - just record position, don't draw
-        if (this.isFirstMove) {
-            this.prevX = pos.x;
-            this.prevY = pos.y;
-            this.isFirstMove = false;
-            return;
-        }
-        
-        // Draw line from previous position to current
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.prevX, this.prevY);
-        this.ctx.lineTo(pos.x, pos.y);
-        this.ctx.stroke();
-        
-        // Update previous position
-        this.prevX = pos.x;
-        this.prevY = pos.y;
+        this.drawTo(pos.x, pos.y, e.timeStamp);
     }
     
     onTouchMove(e) {
@@ -181,46 +180,71 @@ class CreativeTrace {
         this.lastClientY = touch.clientY;
         
         const pos = this.getPos(e);
-        
-        if (this.isFirstMove) {
-            this.prevX = pos.x;
-            this.prevY = pos.y;
-            this.isFirstMove = false;
-            return;
-        }
-        
-        this.ctx.beginPath();
-        this.ctx.moveTo(this.prevX, this.prevY);
-        this.ctx.lineTo(pos.x, pos.y);
-        this.ctx.stroke();
-        
-        this.prevX = pos.x;
-        this.prevY = pos.y;
+        this.drawTo(pos.x, pos.y, e.timeStamp);
     }
 
     onScroll() {
         this.resizeCanvas();
         
-        if (this.isFirstMove || this.lastClientX === null || this.lastClientY === null) {
+        if (this.lastClientX === null || this.lastClientY === null) {
             return;
         }
         
         const newX = this.lastClientX + window.scrollX;
         const newY = this.lastClientY + window.scrollY;
-        
-        if (this.prevX === null || this.prevY === null) {
-            this.prevX = newX;
-            this.prevY = newY;
+        this.drawTo(newX, newY, performance.now());
+    }
+
+    clamp(value, min, max) {
+        return Math.min(max, Math.max(min, value));
+    }
+
+    getLineWidth(distance, deltaTime) {
+        const safeDt = Math.max(16, deltaTime || 16);
+        const speed = distance / safeDt;
+        const t = this.clamp(
+            (speed - CONFIG.canvasSpeedMin) / (CONFIG.canvasSpeedMax - CONFIG.canvasSpeedMin),
+            0,
+            1
+        );
+        return CONFIG.canvasLineWidthMin + t * (CONFIG.canvasLineWidthMax - CONFIG.canvasLineWidthMin);
+    }
+
+    drawTo(x, y, timeStamp) {
+        if (this.isFirstMove || this.prevX === null || this.prevY === null) {
+            this.prevX = x;
+            this.prevY = y;
+            this.lastMidX = null;
+            this.lastMidY = null;
+            this.lastDrawTime = timeStamp;
+            this.isFirstMove = false;
             return;
         }
-        
+
+        const dx = x - this.prevX;
+        const dy = y - this.prevY;
+        const distance = Math.hypot(dx, dy);
+        const deltaTime = (timeStamp || performance.now()) - (this.lastDrawTime || timeStamp || 0);
+
+        this.ctx.lineWidth = this.getLineWidth(distance, deltaTime);
+
+        const midX = (this.prevX + x) / 2;
+        const midY = (this.prevY + y) / 2;
+
         this.ctx.beginPath();
-        this.ctx.moveTo(this.prevX, this.prevY);
-        this.ctx.lineTo(newX, newY);
+        if (this.lastMidX === null || this.lastMidY === null) {
+            this.ctx.moveTo(this.prevX, this.prevY);
+        } else {
+            this.ctx.moveTo(this.lastMidX, this.lastMidY);
+        }
+        this.ctx.quadraticCurveTo(this.prevX, this.prevY, midX, midY);
         this.ctx.stroke();
-        
-        this.prevX = newX;
-        this.prevY = newY;
+
+        this.lastMidX = midX;
+        this.lastMidY = midY;
+        this.prevX = x;
+        this.prevY = y;
+        this.lastDrawTime = timeStamp || performance.now();
     }
 }
 

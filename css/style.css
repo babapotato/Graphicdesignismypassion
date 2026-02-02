@@ -294,7 +294,7 @@ input, textarea {
    PROJECTS SECTION
    ============================================ */
 .section--projects {
-    background-color: var(--color-white);
+    background-color: transparent;
 }
 
 .projects__grid {
@@ -385,7 +385,7 @@ input, textarea {
    US SECTION
    ============================================ */
 .section--us {
-    background-color: var(--color-white);
+    background-color: transparent;
 }
 
 .us__description {
@@ -489,7 +489,7 @@ input, textarea {
    CONTACT SECTION
    ============================================ */
 .section--contact {
-    background-color: var(--color-white);
+    background-color: transparent;
 }
 
 .contact__info {
