@@ -79,6 +79,7 @@ body {
     background-color: var(--color-white);
     min-height: 100vh;
     position: relative;
+    overflow-x: hidden; /* Prevent horizontal scroll from canvas */
 }
 
 /* Remove default link styles */
