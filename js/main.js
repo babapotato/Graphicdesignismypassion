@@ -35,6 +35,8 @@ class CreativeTrace {
         this.prevX = null;
         this.prevY = null;
         this.isFirstMove = true;
+        this.lastClientX = null;
+        this.lastClientY = null;
         
         this.init();
     }
@@ -107,15 +109,21 @@ class CreativeTrace {
         // Mouse leaves window - reset so line doesn't jump when re-entering
         document.addEventListener('mouseleave', () => {
             this.isFirstMove = true;
+            this.lastClientX = null;
+            this.lastClientY = null;
         });
         
         // Touch events for mobile
         document.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: true });
         document.addEventListener('touchend', () => {
             this.isFirstMove = true;
+            this.lastClientX = null;
+            this.lastClientY = null;
         });
         document.addEventListener('touchcancel', () => {
             this.isFirstMove = true;
+            this.lastClientX = null;
+            this.lastClientY = null;
         });
         
         // Resize
@@ -123,9 +131,15 @@ class CreativeTrace {
             setTimeout(() => this.resizeCanvas(), 100);
         });
         
-        // Scroll - keep drawing, just resize canvas if needed
+        // Scroll - draw with scroll movement + resize canvas if needed
+        let scrollTicking = false;
         window.addEventListener('scroll', () => {
-            setTimeout(() => this.resizeCanvas(), 200);
+            if (scrollTicking) return;
+            scrollTicking = true;
+            requestAnimationFrame(() => {
+                this.onScroll();
+                scrollTicking = false;
+            });
         }, { passive: true });
     }
     
@@ -137,6 +151,8 @@ class CreativeTrace {
     }
     
     onMouseMove(e) {
+        this.lastClientX = e.clientX;
+        this.lastClientY = e.clientY;
         const pos = this.getPos(e);
         
         // First move after entering - just record position, don't draw
@@ -160,6 +176,9 @@ class CreativeTrace {
     
     onTouchMove(e) {
         if (e.touches.length !== 1) return;
+        const touch = e.touches[0];
+        this.lastClientX = touch.clientX;
+        this.lastClientY = touch.clientY;
         
         const pos = this.getPos(e);
         
@@ -177,6 +196,31 @@ class CreativeTrace {
         
         this.prevX = pos.x;
         this.prevY = pos.y;
+    }
+
+    onScroll() {
+        this.resizeCanvas();
+        
+        if (this.isFirstMove || this.lastClientX === null || this.lastClientY === null) {
+            return;
+        }
+        
+        const newX = this.lastClientX + window.scrollX;
+        const newY = this.lastClientY + window.scrollY;
+        
+        if (this.prevX === null || this.prevY === null) {
+            this.prevX = newX;
+            this.prevY = newY;
+            return;
+        }
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(this.prevX, this.prevY);
+        this.ctx.lineTo(newX, newY);
+        this.ctx.stroke();
+        
+        this.prevX = newX;
+        this.prevY = newY;
     }
 }
 
@@ -252,6 +296,7 @@ class CommentSystem {
         // Open modal on commentable element
         const commentable = target.closest('[data-commentable]');
         if (commentable) {
+            if (commentable.classList.contains('section')) return;
             this.openModal(e.pageX, e.pageY);
         }
     }
