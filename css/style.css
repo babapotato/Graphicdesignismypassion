@@ -19,6 +19,7 @@
     
     /* Typography */
     --font-family: Helvetica, Arial, sans-serif;
+    --font-family-heading: "Playfair Display", "Times New Roman", serif;
     --font-size-base: 16px;
     --font-size-small: 0.875rem;
     --font-size-medium: 1rem;
@@ -140,7 +141,9 @@ input, textarea {
 .nav {
     position: fixed;
     z-index: var(--z-nav);
-    background-color: var(--color-white);
+    background-color: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
     transition: var(--transition-medium);
 }
 
@@ -192,13 +195,19 @@ input, textarea {
 
 .nav__link:hover,
 .nav__link.active {
-    background-color: var(--color-gray-light);
+    background-color: transparent;
+    font-weight: 700;
+    font-size: calc(var(--font-size-small) * 1.08);
 }
 
 @media (max-width: 768px) {
     .nav__link {
         font-size: 0.75rem;
         padding: var(--spacing-xs);
+    }
+    .nav__link:hover,
+    .nav__link.active {
+        font-size: calc(0.75rem * 1.08);
     }
 }
 
@@ -239,6 +248,7 @@ input, textarea {
 }
 
 .section__title {
+    font-family: var(--font-family-heading);
     font-size: var(--font-size-xl);
     font-weight: 600;
     margin-bottom: var(--spacing-sm);
@@ -265,11 +275,13 @@ input, textarea {
 }
 
 .home__headline {
+    font-family: var(--font-family-heading);
     font-size: var(--font-size-hero);
-    font-weight: 700;
+    font-weight: 600;
     line-height: 1.1;
     margin-bottom: var(--spacing-md);
     letter-spacing: -0.02em;
+    font-style: italic;
 }
 
 .home__subheadline {
@@ -641,7 +653,9 @@ input, textarea {
 .comment-modal {
     position: absolute;
     z-index: var(--z-modal);
-    background-color: var(--color-white);
+    background-color: rgba(255, 255, 255, 0.78);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border: 1px solid var(--color-gray-medium);
     border-radius: 24px;
     padding: var(--spacing-lg);

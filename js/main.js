@@ -104,9 +104,12 @@ class CreativeTrace {
 
         const targetWidth = this.isScreenLocked ? window.innerWidth : docWidth;
         const targetHeight = this.isScreenLocked ? window.innerHeight : docHeight;
+        const dpr = window.devicePixelRatio || 1;
+        const pixelWidth = Math.floor(targetWidth * dpr);
+        const pixelHeight = Math.floor(targetHeight * dpr);
 
         // Skip if no change
-        if (this.canvas.width === targetWidth && this.canvas.height === targetHeight) {
+        if (this.canvas.width === pixelWidth && this.canvas.height === pixelHeight) {
             return;
         }
         
@@ -119,16 +122,19 @@ class CreativeTrace {
         } catch (e) { /* ignore */ }
         
         // Resize
-        this.canvas.width = targetWidth;
-        this.canvas.height = targetHeight;
+        this.canvas.width = pixelWidth;
+        this.canvas.height = pixelHeight;
+        this.canvas.style.width = `${targetWidth}px`;
+        this.canvas.style.height = `${targetHeight}px`;
         
         // Restore drawing
         if (imageData) {
+            this.ctx.setTransform(1, 0, 0, 1, 0, 0);
             this.ctx.putImageData(imageData, 0, 0);
         }
         
+        this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
         this.setStyles();
-        console.log(`Canvas: ${targetWidth}x${targetHeight}`);
     }
     
     setupEventListeners() {
@@ -622,6 +628,7 @@ function init() {
             if (data?.site?.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
                 CONFIG.email = data.site.email;
             }
+            applySiteData(data);
             applyProjectImages(data);
         })
         .catch(() => {});
@@ -637,28 +644,6 @@ if (document.readyState === 'loading') {
 } else {
     init();
 }
-
-// Final canvas resize after full load
-window.addEventListener('load', () => {
-    setTimeout(() => {
-        const canvas = document.getElementById('creative-trace');
-        if (canvas) {
-            const ctx = canvas.getContext('2d');
-            const h = Math.max(document.body.scrollHeight, document.documentElement.scrollHeight);
-            const w = Math.max(document.body.scrollWidth, window.innerWidth);
-            if (canvas.width !== w || canvas.height !== h) {
-                const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
-                canvas.width = w;
-                canvas.height = h;
-                ctx.putImageData(img, 0, 0);
-                ctx.strokeStyle = CONFIG.canvasLineColor;
-                ctx.lineWidth = CONFIG.canvasLineWidth;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-            }
-        }
-    }, 100);
-});
 
 /**
  * ============================================
@@ -689,4 +674,135 @@ function applyProjectImages(data) {
             el.setAttribute('aria-label', title);
         }
     });
+}
+
+/**
+ * ============================================
+ * SITE DATA TEXT
+ * ============================================
+ */
+function applySiteData(data) {
+    if (!data) return;
+
+    const { site, navigation, sections, footer } = data;
+
+    if (site?.title) {
+        document.title = site.title;
+    }
+    if (site?.description) {
+        const meta = document.querySelector('meta[name="description"]');
+        if (meta) meta.setAttribute('content', site.description);
+    }
+
+    if (Array.isArray(navigation?.items)) {
+        navigation.items.forEach(item => {
+            const link = document.querySelector(`.nav__link[data-section="${item.id}"]`);
+            if (link && item.label) link.textContent = item.label;
+        });
+    }
+
+    if (sections?.home) {
+        setText('.home__headline', sections.home.headline);
+        setText('.home__subheadline', sections.home.subheadline);
+        setText('.home__cta', sections.home.cta);
+    }
+
+    if (sections?.projects) {
+        setText('#projects .section__title', sections.projects.title);
+        setText('#projects .section__intro', sections.projects.intro);
+        if (Array.isArray(sections.projects.items)) {
+            const cards = document.querySelectorAll('.project');
+            sections.projects.items.forEach((item, index) => {
+                const card = cards[index];
+                if (!card) return;
+                setTextIn(card, '.project__title', item.title);
+                setTextIn(card, '.project__description', item.description);
+                setTextIn(card, '.project__year', item.year);
+                const tags = card.querySelector('.project__tags');
+                if (tags && Array.isArray(item.tags)) {
+                    tags.innerHTML = '';
+                    item.tags.forEach(tag => {
+                        const span = document.createElement('span');
+                        span.className = 'project__tag';
+                        span.setAttribute('data-commentable', '');
+                        span.textContent = tag;
+                        tags.appendChild(span);
+                    });
+                }
+            });
+        }
+    }
+
+    if (sections?.us) {
+        setText('#us .section__title', sections.us.title);
+        setText('#us .section__intro', sections.us.intro);
+        setText('#us .us__description p', sections.us.description);
+        if (Array.isArray(sections.us.members)) {
+            const members = document.querySelectorAll('.member');
+            sections.us.members.forEach((member, index) => {
+                const card = members[index];
+                if (!card) return;
+                setTextIn(card, '.member__name', member.name);
+                setTextIn(card, '.member__role', member.role);
+                setTextIn(card, '.member__bio', member.bio);
+                const image = card.querySelector('.member__image');
+                if (image && member.image) {
+                    image.classList.remove('member__image--placeholder');
+                    image.style.backgroundImage = `url("${member.image}")`;
+                    image.style.backgroundSize = 'cover';
+                    image.style.backgroundPosition = 'center';
+                }
+            });
+        }
+        if (sections.us.philosophy) {
+            setText('#us .philosophy__title', sections.us.philosophy.title);
+            const list = document.querySelector('#us .philosophy__list');
+            if (list && Array.isArray(sections.us.philosophy.points)) {
+                list.innerHTML = '';
+                sections.us.philosophy.points.forEach(point => {
+                    const li = document.createElement('li');
+                    li.setAttribute('data-commentable', '');
+                    li.textContent = point;
+                    list.appendChild(li);
+                });
+            }
+        }
+    }
+
+    if (sections?.contact) {
+        setText('#contact .section__title', sections.contact.title);
+        setText('#contact .section__intro', sections.contact.intro);
+        const email = sections.contact.email || site?.email;
+        const emailLink = document.querySelector('.contact__email');
+        if (emailLink && email) {
+            emailLink.textContent = email;
+            emailLink.setAttribute('href', `mailto:${email}`);
+        }
+        setText('#contact .contact__location', sections.contact.location);
+        if (Array.isArray(sections.contact.social)) {
+            const links = document.querySelectorAll('.contact__social .social__link');
+            sections.contact.social.forEach((item, index) => {
+                const link = links[index];
+                if (!link) return;
+                link.textContent = item.platform || item.handle || '';
+                if (item.url) link.setAttribute('href', item.url);
+            });
+        }
+    }
+
+    if (footer) {
+        setText('.footer__copyright', footer.copyright);
+        setText('.footer__note', footer.note);
+    }
+}
+
+function setText(selector, value) {
+    const el = document.querySelector(selector);
+    if (el && typeof value === 'string') el.textContent = value;
+}
+
+function setTextIn(root, selector, value) {
+    if (!root || typeof value !== 'string') return;
+    const el = root.querySelector(selector);
+    if (el) el.textContent = value;
 }
