@@ -14,7 +14,7 @@
   },
   "sections": {
     "home": {
-      "headline": "Foremost with you",
+      "headline": "we make you creative.",
       "subheadline": "A design duo crafting digital experiences that resonate.",
       "cta": "See our work"
     },
@@ -27,7 +27,6 @@
           "title": "Brand Identity — Nordic Studio",
           "description": "Complete visual identity system for a Scandinavian architecture firm.",
           "year": "2025",
-          "image": "assets/images/image.png",
           "tags": ["Branding", "Identity", "Print"]
         },
         {
@@ -35,7 +34,6 @@
           "title": "Website — Forma Gallery",
           "description": "Minimalist web experience for a contemporary art gallery.",
           "year": "2025",
-          "image": "https://www.reddit.com/r/dechonkers/comments/1j8au9u/my_fat_cat_has_been_on_a_diet_for_two_weeks_and/",
           "tags": ["Web", "UI/UX", "Development"]
         },
         {
@@ -43,7 +41,6 @@
           "title": "Editorial — Process Magazine",
           "description": "Art direction and layout design for quarterly design publication.",
           "year": "2024",
-          "image": "assets/images/project-3.jpg",
           "tags": ["Editorial", "Typography", "Print"]
         },
         {
@@ -51,8 +48,77 @@
           "title": "App Design — Mindful",
           "description": "Mobile application design for a meditation and wellness platform.",
           "year": "2024",
-          "image": "assets/images/project-4.jpg",
           "tags": ["Mobile", "UI/UX", "Branding"]
+        },
+        {
+          "id": "project-5",
+          "title": "Packaging — Hollow Studio",
+          "description": "Sustainable packaging system for a niche fragrance line.",
+          "year": "2023",
+          "tags": ["Packaging", "Print", "Branding"]
+        },
+        {
+          "id": "project-6",
+          "title": "Installation — Lume",
+          "description": "Immersive light installation for a public arts program.",
+          "year": "2023",
+          "tags": ["Installation", "Experience", "Art"]
+        },
+        {
+          "id": "project-7",
+          "title": "Campaign — Tideworks",
+          "description": "Integrated campaign for a coastal sustainability initiative.",
+          "year": "2023",
+          "tags": ["Campaign", "Strategy", "Branding"]
+        },
+        {
+          "id": "project-8",
+          "title": "Digital — Solstice Lab",
+          "description": "Design system and product site for a climate startup.",
+          "year": "2022",
+          "tags": ["Digital", "UI/UX", "Design System"]
+        },
+        {
+          "id": "project-9",
+          "title": "Wayfinding — Harbor District",
+          "description": "Wayfinding suite for a mixed-use waterfront district.",
+          "year": "2022",
+          "tags": ["Wayfinding", "Environmental", "Signage"]
+        },
+        {
+          "id": "project-10",
+          "title": "Exhibition — Future Forms",
+          "description": "Exhibition identity and catalog for a design biennial.",
+          "year": "2022",
+          "tags": ["Exhibition", "Identity", "Print"]
+        },
+        {
+          "id": "project-11",
+          "title": "Retail — Pine & Co.",
+          "description": "Retail experience and packaging for a home goods brand.",
+          "year": "2021",
+          "tags": ["Retail", "Packaging", "Experience"]
+        },
+        {
+          "id": "project-12",
+          "title": "Motion — Atlas Studio",
+          "description": "Brand motion system for a creative agency refresh.",
+          "year": "2021",
+          "tags": ["Motion", "Branding", "Animation"]
+        },
+        {
+          "id": "project-13",
+          "title": "Editorial — Studio Notes",
+          "description": "Editorial template and grid system for a quarterly journal.",
+          "year": "2021",
+          "tags": ["Editorial", "Typography", "Layout"]
+        },
+        {
+          "id": "project-14",
+          "title": "App Concept — Quiet Hours",
+          "description": "Prototype and visual language for a focus companion app.",
+          "year": "2020",
+          "tags": ["Mobile", "Prototype", "UI/UX"]
         }
       ]
     },

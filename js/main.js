@@ -355,7 +355,7 @@ class CommentSystem {
         if (!modal) return;
         
         // Position
-        const w = 280, h = 220, pad = 15;
+        const w = 320, h = 320, pad = 15;
         const vw = window.innerWidth;
         const vh = window.innerHeight;
         const sx = window.scrollX;
@@ -384,10 +384,15 @@ class CommentSystem {
     }
     
     closeModal() {
-        if (this.activeModal) {
-            this.activeModal.remove();
-            this.activeModal = null;
-        }
+        if (!this.activeModal) return;
+        const modal = this.activeModal;
+        if (modal.classList.contains('comment-modal--closing')) return;
+
+        modal.classList.add('comment-modal--closing');
+        modal.addEventListener('animationend', () => {
+            if (modal.parentNode) modal.parentNode.removeChild(modal);
+            if (this.activeModal === modal) this.activeModal = null;
+        }, { once: true });
     }
     
     handleSubmit(form) {
@@ -621,8 +626,9 @@ function init() {
     new SmoothNavigation();
     new ImageLightbox();
     
-    // Load site data for email config
-    fetch('./content/site_data.json')
+    // Load site data for email config (avoid stale cache)
+    const siteDataUrl = `./content/site_data.json?ts=${Date.now()}`;
+    fetch(siteDataUrl, { cache: 'no-store' })
         .then(r => r.json())
         .then(data => {
             if (data?.site?.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
@@ -650,30 +656,176 @@ if (document.readyState === 'loading') {
  * PROJECT IMAGES
  * ============================================
  */
-function applyProjectImages(data) {
-    const imageEls = document.querySelectorAll('.project__image');
-    if (!imageEls.length) return;
+const DEFAULT_PROJECTS = [
+    { title: 'Brand Identity — Nordic Studio' },
+    { title: 'Website — Forma Gallery' },
+    { title: 'Editorial — Process Magazine' },
+    { title: 'App Design — Mindful' },
+    { title: 'Packaging — Hollow Studio' },
+    { title: 'Installation — Lume' },
+    { title: 'Campaign — Tideworks' },
+    { title: 'Digital — Solstice Lab' }
+];
 
-    const fallbackImages = Array.isArray(data?.sections?.projects?.items)
-        ? data.sections.projects.items.map(item => item.image).filter(Boolean)
-        : [];
-    const sources = fallbackImages;
+const STOCK_IMAGES = [
+    'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1500534314209-a25ddb2bd429?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1487412720507-e7ab37603c6f?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1500534314210-86f2b85aa08d?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1500534314201-f6fa0a4b1f3a?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=900&q=80',
+    'https://images.unsplash.com/photo-1469474968028-56623f02e42f?auto=format&fit=crop&w=900&q=80'
+];
 
-    imageEls.forEach((el, index) => {
-        const src = sources[index % sources.length];
-        if (!src) return;
+function mulberry32(seed) {
+    let t = seed >>> 0;
+    return function () {
+        t += 0x6D2B79F5;
+        let r = Math.imul(t ^ (t >>> 15), t | 1);
+        r ^= r + Math.imul(r ^ (r >>> 7), r | 61);
+        return ((r ^ (r >>> 14)) >>> 0) / 4294967296;
+    };
+}
 
-        el.classList.remove('project__image--placeholder');
-        el.style.backgroundImage = `url("${src}")`;
-        el.dataset.src = src;
-        el.dataset.full = src;
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
+}
 
-        const title = data?.sections?.projects?.items?.[index]?.title;
-        if (title) {
-            el.setAttribute('role', 'img');
-            el.setAttribute('aria-label', title);
+function renderProjectCircles(items) {
+    const grid = document.getElementById('projects-grid');
+    if (!grid) return;
+
+    const list = Array.isArray(items) && items.length ? items : DEFAULT_PROJECTS;
+    grid.innerHTML = '';
+
+    const sizes = [140, 170, 200, 230, 260, 300, 330];
+    const gap = 12;
+    const count = list.length;
+    const gridWidth = Math.max(grid.clientWidth, 320);
+
+    const sortedSizes = [...sizes].sort((a, b) => a - b);
+    const sizePattern = [];
+    while (sortedSizes.length) {
+        sizePattern.push(sortedSizes.pop());
+        if (sortedSizes.length) sizePattern.push(sortedSizes.shift());
+    }
+
+    const orderedSizes = list.map((_, index) => sizePattern[index % sizePattern.length]);
+    const order = Array.from({ length: count }, (_, index) => index);
+    for (let i = order.length - 1; i > 0; i -= 1) {
+        const j = Math.floor(mulberry32(i + 13)() * (i + 1));
+        const temp = order[i];
+        order[i] = order[j];
+        order[j] = temp;
+    }
+
+    const circles = order.map((itemIndex, index) => {
+        const size = orderedSizes[index % orderedSizes.length];
+        return {
+            itemIndex,
+            size,
+            radius: size / 2
+        };
+    });
+
+    const totalArea = circles.reduce((sum, c) => sum + Math.PI * c.radius * c.radius, 0);
+    const density = 0.62;
+    let layoutHeight = Math.max(520, totalArea / (density * gridWidth));
+
+    const placed = [];
+    const rng = mulberry32(count * 97 + 17);
+
+    circles.forEach((circle) => {
+        let attempts = 0;
+        let placedCircle = null;
+
+        while (!placedCircle && attempts < 260) {
+            const x = (circle.radius + gap / 2)
+                + rng() * (gridWidth - (circle.radius * 2) - gap);
+            const y = (circle.radius + gap / 2)
+                + rng() * (layoutHeight - (circle.radius * 2) - gap);
+
+            const ok = placed.every((other) => {
+                const dx = x - other.x;
+                const dy = y - other.y;
+                const minDist = circle.radius + other.radius + gap;
+                return (dx * dx + dy * dy) >= (minDist * minDist);
+            });
+
+            if (ok) {
+                placedCircle = { ...circle, x, y };
+            }
+            attempts += 1;
+        }
+
+        if (!placedCircle) {
+            layoutHeight += circle.size + gap;
+            placedCircle = {
+                ...circle,
+                x: clamp(circle.radius + gap / 2, circle.radius + gap / 2, gridWidth - circle.radius - gap / 2),
+                y: layoutHeight - circle.radius - gap / 2
+            };
+        }
+
+        placed.push(placedCircle);
+    });
+
+    placed.forEach((circle) => {
+        const article = document.createElement('article');
+        article.className = 'project';
+        article.style.setProperty('--size', `${circle.size}px`);
+        article.style.setProperty('--x', `${circle.x}px`);
+        article.style.setProperty('--y', `${circle.y}px`);
+
+        const image = document.createElement('div');
+        image.className = 'project__image project__image--placeholder';
+        image.setAttribute('role', 'img');
+
+        const labelText = list[circle.itemIndex]?.title || list[circle.itemIndex]?.description || 'Project';
+        image.setAttribute('aria-label', labelText);
+
+        const label = document.createElement('span');
+        label.className = 'project__label';
+        label.setAttribute('data-commentable', '');
+        label.textContent = labelText;
+
+        image.appendChild(label);
+        article.appendChild(image);
+        grid.appendChild(article);
+
+        const src = list[circle.itemIndex]?.image || STOCK_IMAGES[circle.itemIndex % STOCK_IMAGES.length];
+        if (src) {
+            image.classList.remove('project__image--placeholder');
+            image.style.backgroundImage = `url("${src}")`;
+            image.dataset.src = src;
+            image.dataset.full = src;
         }
     });
+
+    const minHeight = Math.max(520, layoutHeight);
+    if (window.matchMedia('(max-width: 900px)').matches) {
+        grid.style.minHeight = '';
+    } else {
+        grid.style.minHeight = `${minHeight}px`;
+    }
+}
+
+let currentProjectItems = null;
+let projectResizeTimer = null;
+function applyProjectImages(data) {
+    currentProjectItems = data?.sections?.projects?.items || null;
+    renderProjectCircles(currentProjectItems);
+
+    if (!applyProjectImages.hasResizeListener) {
+        window.addEventListener('resize', () => {
+            window.clearTimeout(projectResizeTimer);
+            projectResizeTimer = window.setTimeout(() => {
+                renderProjectCircles(currentProjectItems);
+            }, 150);
+        });
+        applyProjectImages.hasResizeListener = true;
+    }
 }
 
 /**
@@ -710,27 +862,6 @@ function applySiteData(data) {
     if (sections?.projects) {
         setText('#projects .section__title', sections.projects.title);
         setText('#projects .section__intro', sections.projects.intro);
-        if (Array.isArray(sections.projects.items)) {
-            const cards = document.querySelectorAll('.project');
-            sections.projects.items.forEach((item, index) => {
-                const card = cards[index];
-                if (!card) return;
-                setTextIn(card, '.project__title', item.title);
-                setTextIn(card, '.project__description', item.description);
-                setTextIn(card, '.project__year', item.year);
-                const tags = card.querySelector('.project__tags');
-                if (tags && Array.isArray(item.tags)) {
-                    tags.innerHTML = '';
-                    item.tags.forEach(tag => {
-                        const span = document.createElement('span');
-                        span.className = 'project__tag';
-                        span.setAttribute('data-commentable', '');
-                        span.textContent = tag;
-                        tags.appendChild(span);
-                    });
-                }
-            });
-        }
     }
 
     if (sections?.us) {
