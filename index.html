@@ -44,7 +44,9 @@
         <!-- HOME SECTION -->
         <section id="home" class="section section--home">
             <div class="section__content">
-                <h1 class="home__headline" data-commentable>We design with intention.</h1>
+                <h1 class="home__headline" aria-label="Studio Duo logo">
+                    <img class="home__logo" src="assets/images/Asset 1.svg" alt="Studio Duo">
+                </h1>
                 <p class="home__subheadline" data-commentable>A design duo crafting digital experiences that resonate.</p>
                 <a href="#projects" class="home__cta">See our work ↓</a>
             </div>
@@ -152,7 +154,10 @@
                     placeholder="Your email" 
                     required
                 >
-                <button type="submit" class="comment-modal__submit">Send</button>
+                <div class="comment-modal__actions">
+                    <button type="button" class="comment-modal__export" aria-label="Export drawing as JPG">JPG</button>
+                    <button type="submit" class="comment-modal__submit">Send</button>
+                </div>
             </form>
         </div>
     </template>

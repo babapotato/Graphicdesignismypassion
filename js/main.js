@@ -322,6 +322,14 @@ class CommentSystem {
             this.handleSubmit(target.closest('.comment-modal__form'));
             return;
         }
+
+        // Handle export
+        if (target.classList.contains('comment-modal__export')) {
+            e.preventDefault();
+            e.stopPropagation();
+            this.exportDrawingAsJpg();
+            return;
+        }
         
         // Skip nav clicks
         if (target.closest('.nav')) return;
@@ -429,6 +437,24 @@ class CommentSystem {
         
         this.createMarker(cx, cy, comment, email);
         this.closeModal();
+    }
+
+    exportDrawingAsJpg() {
+        const canvas = document.getElementById('creative-trace');
+        if (!canvas) return;
+
+        try {
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+            const link = document.createElement('a');
+            const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+            link.href = dataUrl;
+            link.download = `studio-moo-drawing-${stamp}.jpg`;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+        } catch (err) {
+            console.error('Export failed:', err);
+        }
     }
     
     sendMailto(comment, email) {
@@ -854,7 +880,7 @@ function applySiteData(data) {
     }
 
     if (sections?.home) {
-        setText('.home__headline', sections.home.headline);
+        // Home headline is a logo image; don't overwrite it with text content.
         setText('.home__subheadline', sections.home.subheadline);
         setText('.home__cta', sections.home.cta);
     }
