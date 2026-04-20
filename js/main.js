@@ -5,6 +5,8 @@
  * ============================================
  */
 
+import { fetchProjectsFromSanity } from './sanity.js';
+
 // Configuration
 const CONFIG = {
     email: '[INSERT_EMAIL_HERE]',
@@ -656,12 +658,23 @@ function init() {
     const siteDataUrl = `./content/site_data.json?ts=${Date.now()}`;
     fetch(siteDataUrl, { cache: 'no-store' })
         .then(r => r.json())
-        .then(data => {
+        .then(async (data) => {
             if (data?.site?.email && data.site.email !== '[INSERT_EMAIL_HERE]') {
                 CONFIG.email = data.site.email;
             }
             applySiteData(data);
-            applyProjectImages(data);
+
+            // Prefer Sanity projects (fast CDN), fall back to local JSON
+            try {
+                const sanityProjects = await fetchProjectsFromSanity();
+                if (Array.isArray(sanityProjects)) {
+                    renderProjectCircles(sanityProjects);
+                } else {
+                    applyProjectImages(data);
+                }
+            } catch (e) {
+                applyProjectImages(data);
+            }
         })
         .catch(() => {});
     
