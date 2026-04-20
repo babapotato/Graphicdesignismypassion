@@ -5,7 +5,7 @@
  * ============================================
  */
 
-import { fetchProjectsFromSanity } from './sanity.js';
+import { fetchProjectsFromSanity, setSanityConfig } from './sanity.js';
 
 // Configuration
 const CONFIG = {
@@ -666,6 +666,7 @@ function init() {
 
             // Prefer Sanity projects (fast CDN), fall back to local JSON
             try {
+                setSanityConfig(data?.site?.sanity);
                 const sanityProjects = await fetchProjectsFromSanity();
                 if (Array.isArray(sanityProjects)) {
                     renderProjectCircles(sanityProjects);

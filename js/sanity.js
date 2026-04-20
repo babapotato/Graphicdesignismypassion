@@ -1,13 +1,23 @@
 // Lightweight Sanity bridge for static sites (GitHub Pages-friendly).
-// Fill these from Sanity Manage → your project → API:
-// - projectId: e.g. "abc123xy"
-// - dataset: e.g. "production"
+//
+// Recommended setup: put your Sanity values in `content/site_data.json` under:
+//   { "site": { "sanity": { "projectId": "...", "dataset": "production" } } }
+//
+// You can also hardcode them here, but keeping them in JSON makes it easier to edit.
 export const SANITY_CONFIG = {
-  projectId: 'Yk6gecw8l',
-  dataset: 'production',
+  projectId: 'YOUR_PROJECT_ID',
+  dataset: 'YOUR_DATASET',
   apiVersion: '2026-01-01',
-  useCdn: true
+  useCdn: true,
 };
+
+export function setSanityConfig(partial) {
+  if (!partial || typeof partial !== 'object') return;
+  if (typeof partial.projectId === 'string') SANITY_CONFIG.projectId = partial.projectId;
+  if (typeof partial.dataset === 'string') SANITY_CONFIG.dataset = partial.dataset;
+  if (typeof partial.apiVersion === 'string') SANITY_CONFIG.apiVersion = partial.apiVersion;
+  if (typeof partial.useCdn === 'boolean') SANITY_CONFIG.useCdn = partial.useCdn;
+}
 
 function hasSanityConfig() {
   return (
